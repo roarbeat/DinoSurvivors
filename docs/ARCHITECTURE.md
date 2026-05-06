@@ -1351,6 +1351,21 @@ Run-Start, Camera klemmt automatisch am Plattform-Rand.
 und ruft `set_bounds()` damit auf. So bleibt die Camera auch bei
 großem Player-Abstand vom Center innerhalb der Plattform.
 
+**Bounds-Padding (ADR 0037)**
+
+```gdscript
+RunCamera.attach_to_world(world, padding)        # padding @ attach
+RunCamera.set_bounds_padding(p)                  # zur Laufzeit ändern
+RunCamera.compute_padded_bounds(world_rect, padding) → Rect2  # static pure
+```
+
+Padding ERWEITERT die Bounds nach außen → Camera kann den Charcoal-
+Background außerhalb der Plattform zeigen. Default `Vector2.ZERO` →
+strikt am Plattform-Rand wie ADR 0033.
+
+`MapDef.camera_padding` ist die data-driven Source-of-Truth — RunScene
+liest das beim attach. Modder können pro Map eigenes Padding wählen.
+
 **Camera-Shake (ADR 0035, Trauma-System)**
 
 ```gdscript

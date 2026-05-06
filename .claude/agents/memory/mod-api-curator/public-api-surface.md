@@ -192,6 +192,7 @@ path_row            : int             # -1 = kein horizontaler Pfad
 path_col            : int             # -1 = kein vertikaler Pfad
 deterministic_colors: bool            # true = stable Tile-Color-Variation
 biome_label_key     : StringName      # optionaler i18n-Key für Map-Banner
+camera_padding      : Vector2         # ADR 0037 — Bounds-Padding für RunCamera
 ```
 
 Validate-Regeln:
@@ -283,7 +284,12 @@ func set_target(t: Node2D) -> void
 func snap_to_target() -> void
 func set_follow_smoothing(value: float) -> void
 func set_bounds(min_pos: Vector2, max_pos: Vector2) -> void
-func attach_to_world(world: IsoWorld) -> void  # ADR 0033 — bounds = world.world_bounds()
+func attach_to_world(world: IsoWorld, padding = Vector2(-1,-1)) -> void  # ADR 0033/0037
+func set_bounds_padding(p: Vector2) -> void  # ADR 0037 — re-apply on cached bounds
+@export var bounds_padding: Vector2 = Vector2.ZERO  # ADR 0037
+
+# Pure Function (Test-Hook)
+static func compute_padded_bounds(world_rect: Rect2, padding: Vector2) -> Rect2
 
 # Camera-Shake (ADR 0035)
 func add_trauma(amount: float) -> void

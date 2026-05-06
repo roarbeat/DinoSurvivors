@@ -57,3 +57,24 @@ func test_validate_passes_for_default_loaded_from_content() -> void:
 func test_map_type_is_registered() -> void:
 	var t := ContentLoader.types()
 	assert_true(t.has(&"map"))
+
+
+# ---------------------------------------------------------------------------
+# camera_padding (ADR 0037)
+# ---------------------------------------------------------------------------
+
+func test_camera_padding_defaults_to_zero() -> void:
+	var m := MapDef.new()
+	assert_eq(m.camera_padding, Vector2.ZERO)
+
+
+func test_default_map_camera_padding_is_zero() -> void:
+	# default.tres ist Backward-Kompat → kein Padding
+	var m := ContentLoader.get_or_null(&"map", &"default") as MapDef
+	assert_eq(m.camera_padding, Vector2.ZERO)
+
+
+func test_camera_padding_can_be_set_via_export() -> void:
+	var m := MapDef.new()
+	m.camera_padding = Vector2(50, 30)
+	assert_eq(m.camera_padding, Vector2(50, 30))

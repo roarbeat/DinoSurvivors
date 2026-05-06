@@ -80,11 +80,16 @@ func _ready() -> void:
 		if map_def != null:
 			iso_world.set_map_def(map_def)
 
-	# 2b. Camera auf Player zentrieren (ADR 0032) + Bounds aus IsoWorld (ADR 0033)
+	# 2b. Camera auf Player zentrieren (ADR 0032) + Bounds aus IsoWorld (ADR 0033/0037)
 	if run_camera != null:
 		run_camera.set_target(_player)
 		if iso_world != null:
-			run_camera.attach_to_world(iso_world)
+			# MapDef.camera_padding wenn verfügbar, sonst no-padding
+			var pad: Vector2 = Vector2.ZERO
+			var map_def: MapDef = iso_world.get_map_def()
+			if map_def != null:
+				pad = map_def.camera_padding
+			run_camera.attach_to_world(iso_world, pad)
 		run_camera.snap_to_target()
 
 	# 3. WaveSpawner spawn_root setzen

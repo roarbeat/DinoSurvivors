@@ -7,6 +7,36 @@ angelehnt; SemVer ab 1.0.0.
 ## [Unreleased]
 
 ### Added
+- **ADR 0037:** Camera-Bounds-Padding — Camera klemmt nicht mehr
+  strikt am Plattform-Rand. `bounds_padding: Vector2` erweitert das
+  attach_to_world-Rect nach außen, sodass der Charcoal-Background
+  außerhalb der Plattform sichtbar wird.
+- `core/world/run_camera.gd` erweitert um:
+  - `@export var bounds_padding: Vector2 = Vector2.ZERO`
+  - `set_bounds_padding(p)` re-applied auf bereits gesetzte World-Bounds
+  - `attach_to_world(world, padding = Vector2(-1,-1))` mit Padding-Argument
+  - `compute_padded_bounds(world_rect, padding) -> Rect2` als pure static
+- `core/content/map_def.gd` erweitert um:
+  - `@export var camera_padding: Vector2 = Vector2.ZERO`
+- `core/run_scene/run.gd` — liest `MapDef.camera_padding` und reicht
+  es beim `attach_to_world` durch.
+- `tests/unit/test_run_camera.gd` — `+ 5 Padding-Tests`
+- `tests/unit/test_map_def.gd` — `+ 3 camera_padding-Tests`
+
+### Public-API additiv
+- `RunCamera.set_bounds_padding(p: Vector2)`
+- `RunCamera.compute_padded_bounds(world_rect, padding) -> Rect2` (static)
+- `RunCamera.attach_to_world(world, padding)` mit Padding-Argument
+- `MapDef.camera_padding: Vector2`
+
+### Backward-Kompatibilität
+- Default-Padding `Vector2.ZERO` → ADR 0033-Verhalten unverändert
+- `attach_to_world(world)` ohne Padding-Argument → nutzt bisheriges
+  `bounds_padding` (Default Zero)
+
+---
+
+### Added
 - **ADR 0036:** MapDef als Content-Resource — Map-Layouts sind jetzt
   data-driven. Designer und Modder können Map-Größe/Pfad-Pattern ändern
   ohne Code-Touch.

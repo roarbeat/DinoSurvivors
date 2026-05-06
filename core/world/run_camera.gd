@@ -37,6 +37,14 @@ extends Camera2D
 @export var bound_min: Vector2 = Vector2(-1000, -1000)
 @export var bound_max: Vector2 = Vector2(1000, 1000)
 
+## Bounds-Padding (ADR 0037). Erweitert die Bounds nach außen, sodass
+## Camera Breathing-Room um die Plattform zeigen kann. Default Zero =
+## ADR 0033-Verhalten (Camera klemmt strikt am Plattform-Rand).
+@export var bounds_padding: Vector2 = Vector2.ZERO
+
+## Internes Last-World-Bounds-Caching für set_bounds_padding-Re-Apply.
+var _last_world_bounds: Rect2 = Rect2()
+
 
 # ---------------------------------------------------------------------------
 # Camera-Shake (Trauma-System, ADR 0035)
@@ -134,16 +142,45 @@ func set_follow_smoothing(value: float) -> void:
 	follow_smoothing = max(0.0, value)
 
 
-## Bindet die Camera an die Bounds einer IsoWorld (ADR 0033).
+## Bindet die Camera an die Bounds einer IsoWorld (ADR 0033/0037).
 ## Liest `IsoWorld.world_bounds()` und ruft set_bounds() entsprechend.
+## Padding (ADR 0037) erweitert die Bounds nach außen — wenn nicht
+## angegeben, wird das aktuelle bounds_padding-Property genutzt.
+##
 ## No-op wenn world null ist oder leeres Rect liefert.
-func attach_to_world(world: IsoWorld) -> void:
+func attach_to_world(world: IsoWorld, padding: Vector2 = Vector2(-1, -1)) -> void:
 	if world == null:
 		return
 	var b: Rect2 = world.world_bounds()
 	if b.size == Vector2.ZERO:
 		return
-	set_bounds(b.position, b.position + b.size)
+	# Padding-Override-Sentinel: (-1, -1) heißt "nutze aktuelles bounds_padding"
+	if padding.x >= 0.0 and padding.y >= 0.0:
+		bounds_padding = padding
+	_last_world_bounds = b
+	_apply_bounds_with_padding(b, bounds_padding)
+
+
+## Setzt das Padding zur Laufzeit. Wenn die Camera bereits an eine World
+## gehängt ist, werden die Bounds sofort neu berechnet.
+func set_bounds_padding(p: Vector2) -> void:
+	bounds_padding = Vector2(max(0.0, p.x), max(0.0, p.y))
+	if _last_world_bounds.size != Vector2.ZERO:
+		_apply_bounds_with_padding(_last_world_bounds, bounds_padding)
+
+
+## Pure Function: erweitert ein World-Rect um das Padding.
+## Result-Rect.position = world.position - padding.
+## Result-Rect.size     = world.size + padding * 2.
+static func compute_padded_bounds(world_rect: Rect2, padding: Vector2) -> Rect2:
+	var pos: Vector2 = world_rect.position - padding
+	var size: Vector2 = world_rect.size + padding * 2.0
+	return Rect2(pos, size)
+
+
+func _apply_bounds_with_padding(world_rect: Rect2, padding: Vector2) -> void:
+	var padded: Rect2 = compute_padded_bounds(world_rect, padding)
+	set_bounds(padded.position, padded.position + padded.size)
 
 
 ## Setzt die Bounds. Wenn min > max in einer Achse, wird automatisch

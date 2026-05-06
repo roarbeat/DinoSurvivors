@@ -246,6 +246,67 @@ func test_attach_to_world_with_null_is_noop() -> void:
 	cam.queue_free()
 
 
+func test_compute_padded_bounds_pure() -> void:
+	# Pure-Function-Test (ADR 0037)
+	var world := Rect2(Vector2(-100, -50), Vector2(200, 100))
+	var padded := RunCamera.compute_padded_bounds(world, Vector2(20, 10))
+	assert_eq(padded.position, Vector2(-120, -60))
+	assert_eq(padded.size, Vector2(240, 120))
+
+
+func test_compute_padded_bounds_zero_padding_unchanged() -> void:
+	var world := Rect2(Vector2(0, 0), Vector2(64, 32))
+	var padded := RunCamera.compute_padded_bounds(world, Vector2.ZERO)
+	assert_eq(padded.position, world.position)
+	assert_eq(padded.size, world.size)
+
+
+func test_attach_to_world_with_padding_extends_bounds() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	var world: IsoWorld = ISO_WORLD_SCENE_FOR_CAMERA.instantiate()
+	world.grid_size = Vector2i(8, 8)
+	add_child(world)
+
+	# 8×8 Grid: bounds (-256, -16) bis (256, 240)
+	# Mit padding (50, 30) → bounds (-306, -46) bis (306, 270)
+	cam.attach_to_world(world, Vector2(50, 30))
+	assert_almost_eq(cam.bound_min.x, -306.0, 0.1)
+	assert_almost_eq(cam.bound_min.y, -46.0, 0.1)
+	assert_almost_eq(cam.bound_max.x, 306.0, 0.1)
+	assert_almost_eq(cam.bound_max.y, 270.0, 0.1)
+	assert_eq(cam.bounds_padding, Vector2(50, 30))
+
+	cam.queue_free()
+	world.queue_free()
+
+
+func test_set_bounds_padding_reapplies_to_existing_bounds() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	var world: IsoWorld = ISO_WORLD_SCENE_FOR_CAMERA.instantiate()
+	world.grid_size = Vector2i(8, 8)
+	add_child(world)
+	cam.attach_to_world(world)  # ohne Padding zuerst
+	assert_almost_eq(cam.bound_min.x, -256.0, 0.1)
+
+	# Jetzt Padding nachträglich setzen → Bounds re-applied
+	cam.set_bounds_padding(Vector2(20, 10))
+	assert_almost_eq(cam.bound_min.x, -276.0, 0.1)
+	assert_almost_eq(cam.bound_max.x, 276.0, 0.1)
+
+	cam.queue_free()
+	world.queue_free()
+
+
+func test_set_bounds_padding_clamps_negative_to_zero() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	cam.set_bounds_padding(Vector2(-10, -5))
+	assert_eq(cam.bounds_padding, Vector2.ZERO)
+	cam.queue_free()
+
+
 func test_attach_to_world_with_empty_grid_is_noop() -> void:
 	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
 	add_child(cam)

@@ -27,6 +27,11 @@ extends ContentItem
 ## Leer = kein Banner.
 @export var biome_label_key: StringName = &""
 
+## Camera-Bounds-Padding (ADR 0037). Erweitert die Bounds nach außen
+## beim attach_to_world, sodass Camera Breathing-Room um die Plattform
+## zeigen kann. Default Zero = strikt an Plattform-Rand klemmen.
+@export var camera_padding: Vector2 = Vector2.ZERO
+
 
 func validate() -> String:
 	var base := super.validate()
