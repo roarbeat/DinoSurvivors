@@ -21,6 +21,11 @@ extends ContentItem
 ## Pivot-Offset für die HealthBar relativ zum Sprite-Pivot.
 @export var visual_pivot_offset: Vector2 = Vector2.ZERO
 
+## Optional: ID des Upgrades, das diesen Dino freischaltet (ADR 0044).
+## Leer = always-unlocked (Default für trex). Wenn gesetzt, ist der
+## Dino erst spielbar wenn das Upgrade bei level >= 1 ist.
+@export var unlock_upgrade_id: StringName = &""
+
 
 func validate() -> String:
 	var base := super.validate()

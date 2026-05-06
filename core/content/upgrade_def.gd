@@ -30,6 +30,15 @@ extends ContentItem
 ## Optionaler i18n-Key für Tier-Beschreibung (z.B. "+15% Damage").
 @export var tier_description_key: StringName = &""
 
+## Kategorie für Shop-Filterung (ADR 0044). Default `&"stat"`. Andere
+## Standard-Werte: `&"dino_unlock"` für Dino-Käufe.
+## Modder können beliebige Kategorien einführen.
+@export var category: StringName = &"stat"
+
+## Nur relevant wenn category=&"dino_unlock". ID des freischaltbaren
+## Dinos. Wird beim Kauf vom Player als unlocked markiert.
+@export var unlock_dino_id: StringName = &""
+
 
 func validate() -> String:
 	var base := super.validate()

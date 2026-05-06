@@ -94,6 +94,34 @@ msgstr "T-PRIME: ENRAGED"
 msgid "boss.tyrannosaurus_prime.phase_rage"
 msgstr "T-PRIME: FRENZY!"
 
+# --- Triceratops Charge (ADR 0043) ---
+
+msgid "boss.triceratops_charge.name"
+msgstr "Triceratops Charge"
+
+msgid "boss.triceratops_charge.tooltip"
+msgstr "Heavily armored. When he charges, RUN!"
+
+msgid "boss.triceratops_charge.intro"
+msgstr "BOSS! TRICERATOPS WINDS UP!"
+
+msgid "boss.triceratops_charge.phase_mid"
+msgstr "TRICERATOPS: AGGRAVATED"
+
+msgid "boss.triceratops_charge.phase_rage"
+msgstr "TRICERATOPS: STAMPEDE!"
+
+# --- Forest Clearing (ADR 0043) ---
+
+msgid "map.forest_clearing.name"
+msgstr "Forest Clearing"
+
+msgid "map.forest_clearing.tooltip"
+msgstr "12×12 clearing with dense decorations. More space, more variation."
+
+msgid "map.forest_clearing.banner"
+msgstr "FOREST CLEARING"
+
 # --- Upgrades (ADR 0040) ---
 
 msgid "upgrade.stronger_jaws.name"
@@ -193,6 +221,30 @@ msgstr "Tyrannosaurus Rex"
 
 msgid "dino.trex.tooltip"
 msgstr "The classic. Sturdy, hard-hitting, unfazed."
+
+msgid "dino.velociraptor.name"
+msgstr "Velociraptor"
+
+msgid "dino.velociraptor.tooltip"
+msgstr "Fast, fragile, precise. Glass cannon."
+
+msgid "dino.stegosaurus.name"
+msgstr "Stegosaurus"
+
+msgid "dino.stegosaurus.tooltip"
+msgstr "Slow, tough, heavy. Tank with spike tail."
+
+msgid "upgrade.dino_unlock_velociraptor.name"
+msgstr "Unlock Velociraptor"
+
+msgid "upgrade.dino_unlock_velociraptor.tooltip"
+msgstr "Unlocks the Velociraptor as a playable character."
+
+msgid "upgrade.dino_unlock_stegosaurus.name"
+msgstr "Unlock Stegosaurus"
+
+msgid "upgrade.dino_unlock_stegosaurus.tooltip"
+msgstr "Unlocks the Stegosaurus as a playable character."
 
 # --- UI stubs ---
 

@@ -162,6 +162,80 @@ func test_world_size_for_8x8_grid() -> void:
 	world.queue_free()
 
 
+# ---------------------------------------------------------------------------
+# Side-Faces + Decorations (ADR 0041)
+# ---------------------------------------------------------------------------
+
+func test_iso_world_creates_sides_container() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(4, 4)
+	add_child(world)
+	var sides := world.get_node_or_null("Sides")
+	assert_not_null(sides, "Sides-Container muss existieren")
+	world.queue_free()
+
+
+func test_iso_world_sides_only_on_edge_tiles() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(4, 4)
+	add_child(world)
+	var sides := world.get_node_or_null("Sides")
+	# 4×4: untere Reihe (y=3) hat 4 Tiles, rechte Spalte (x=3) hat 4 Tiles,
+	# Eck-Tile (3,3) doppelt-zählen vermeiden → 4+4-1 = 7 Side-Faces
+	assert_eq(sides.get_child_count(), 7,
+		"Side-Faces nur an unterer Reihe + rechter Spalte (Iso-Edge)")
+	world.queue_free()
+
+
+func test_iso_world_creates_decorations_container() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	add_child(world)
+	var decor := world.get_node_or_null("Decorations")
+	assert_not_null(decor)
+	world.queue_free()
+
+
+func test_iso_world_decoration_density_zero_means_no_decor() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(4, 4)
+	world.decoration_density = 0.0
+	add_child(world)
+	var decor := world.get_node_or_null("Decorations")
+	assert_eq(decor.get_child_count(), 0)
+	world.queue_free()
+
+
+func test_iso_world_decorations_skip_path_tiles() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(8, 8)
+	world.path_row = 4
+	world.path_col = 4
+	world.decoration_density = 1.0  # alle non-path tiles
+	add_child(world)
+	# Alle Decor-Positionen müssen non-path tiles entsprechen
+	var decor := world.get_node_or_null("Decorations")
+	# Pro Tile maximal eine Decor, also # Decor <= 64-15=49 (Path-Tiles ausgenommen)
+	# 8x8 = 64 tiles, Path-Reihe + Path-Spalte = 15 (mit Eck-Doppel)
+	# Akzeptiere alle Decor unter 50
+	assert_lte(decor.get_child_count(), 50)
+	world.queue_free()
+
+
+func test_is_edge_tile_corner() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(4, 4)
+	add_child(world)
+	# (3, 3) ist Eck → edge
+	assert_true(world._is_edge_tile(Vector2i(3, 3)))
+	# (3, 0) ist rechte Edge
+	assert_true(world._is_edge_tile(Vector2i(3, 0)))
+	# (0, 3) ist untere Edge
+	assert_true(world._is_edge_tile(Vector2i(0, 3)))
+	# (0, 0) ist NICHT edge (oben-links)
+	assert_false(world._is_edge_tile(Vector2i(0, 0)))
+	world.queue_free()
+
+
 func test_world_size_zero_for_empty_grid() -> void:
 	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
 	world.grid_size = Vector2i(0, 0)

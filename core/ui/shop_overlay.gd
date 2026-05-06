@@ -21,12 +21,17 @@ extends CanvasLayer
 
 @export var auto_show_on_run_end: bool = false  # Test-Default false
 
+## Aktueller Tab-Filter (ADR 0044). Default `&"stat"`. Andere Werte:
+## `&"dino_unlock"` für Dino-Käufe.
+@export var current_tab: StringName = &"stat"
+
 
 # ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
 
 var _container: VBoxContainer
+var _tab_bar: HBoxContainer
 var _title_label: Label
 var _close_button: Button
 var _offered_ids: Array[StringName] = []
@@ -79,6 +84,23 @@ func _build_ui() -> void:
 	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_container.add_child(_title_label)
 
+	# Tab-Bar (ADR 0044): zwei Tabs für Kategorien
+	_tab_bar = HBoxContainer.new()
+	_tab_bar.name = "TabBar"
+	_container.add_child(_tab_bar)
+
+	var stats_tab := Button.new()
+	stats_tab.name = "StatsTab"
+	stats_tab.text = "STATS"
+	stats_tab.pressed.connect(func(): set_tab(&"stat"))
+	_tab_bar.add_child(stats_tab)
+
+	var dinos_tab := Button.new()
+	dinos_tab.name = "DinosTab"
+	dinos_tab.text = "DINOS"
+	dinos_tab.pressed.connect(func(): set_tab(&"dino_unlock"))
+	_tab_bar.add_child(dinos_tab)
+
 	_close_button = Button.new()
 	_close_button.name = "CloseButton"
 	_close_button.text = "Close"
@@ -111,14 +133,25 @@ func get_offered_ids() -> Array[StringName]:
 	return _offered_ids.duplicate()
 
 
+## Wechselt den Tab-Filter (ADR 0044). Triggert refresh.
+func set_tab(tab: StringName) -> void:
+	current_tab = tab
+	_refresh_list()
+
+
+func get_tab() -> StringName:
+	return current_tab
+
+
 # ---------------------------------------------------------------------------
 # Internals
 # ---------------------------------------------------------------------------
 
 func _refresh_list() -> void:
-	# Bestehende Upgrade-Rows aufräumen (alle Children außer Title + Close)
+	# Bestehende Upgrade-Rows aufräumen (alle Children außer Title +
+	# TabBar + Close)
 	for child in _container.get_children():
-		if child == _title_label or child == _close_button:
+		if child == _title_label or child == _close_button or child == _tab_bar:
 			continue
 		_container.remove_child(child)
 		child.queue_free()
@@ -131,6 +164,9 @@ func _refresh_list() -> void:
 	for item in all:
 		var def: UpgradeDef = item as UpgradeDef
 		if def == null:
+			continue
+		# Tab-Filter (ADR 0044): nur Upgrades der aktuellen Kategorie
+		if def.category != current_tab:
 			continue
 		_offered_ids.append(def.id)
 		var row := _build_upgrade_row(def)

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=2 format=3 uid="uid://dino_upgrade_unlock_velociraptor"]
+
+[ext_resource type="Script" path="res://core/content/upgrade_def.gd" id="1_upgradedef"]
+
+[resource]
+script = ExtResource("1_upgradedef")
+id = &"dino_unlock_velociraptor"
+display_name_key = &"upgrade.dino_unlock_velociraptor.name"
+description_key = &"upgrade.dino_unlock_velociraptor.tooltip"
+source_mod_id = &""
+override_existing = false
+max_level = 1
+cost_per_level = [200]
+stat_modifiers_per_level = [{}]
+cost_currency = &"amber"
+category = &"dino_unlock"
+unlock_dino_id = &"velociraptor"

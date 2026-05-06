@@ -6,7 +6,161 @@ angelehnt; SemVer ab 1.0.0.
 
 ## [Unreleased]
 
-(noch keine Änderungen seit 0.2.0)
+(noch keine Änderungen seit 0.4.0)
+
+---
+
+## [0.4.0] - 2026-05-06
+
+> **Phase 6 — Content-Erweiterung + Mood-Reference-Approximation.**
+> Map sieht erstmals nach erhabener Plattform aus (Dirt-Sides +
+> Decorations + Charcoal-Background). Player ist als grüner Raptor
+> erkennbar. Zweiter Boss (Triceratops Charge) auf Welle 10/20.
+> Zweite Map (Forest Clearing 12×12) liegt im Content-Pool. Drei
+> spielbare Dinos (trex always-unlocked, velociraptor + stegosaurus
+> via Bernstein-Käufe). Multi-Tab-Shop mit STATS/DINOS.
+>
+> 4 neue ADRs (0041 Visual-Polish, 0042 Raptor-Composite, 0043
+> Triceratops+Forest, 0044 Multi-Dino+Tab-Shop). Modder-Surface ist
+> jetzt 8 ContentLoader-Types + 24 EventBus-Signals.
+>
+> Save-Schema bleibt v1.2 — keine Migration nötig. Saves von 0.0.x
+> bis 0.4.0 laden alle sauber.
+
+### Added
+- **ADR 0044:** Multi-Dino + Multi-Tab-Shop — drei spielbare Dinos
+  (trex/velociraptor/stegosaurus), Multi-Tab-Shop mit STATS und
+  DINOS-Tabs.
+- `core/content/upgrade_def.gd` — `+ category: StringName = &"stat"`,
+  `+ unlock_dino_id: StringName`.
+- `core/content/dino_def.gd` — `+ unlock_upgrade_id: StringName`.
+- `core/meta_progression.gd` — `+ is_dino_unlocked(dino_id)`.
+- `core/ui/shop_overlay.gd` — Multi-Tab-System (Tab-Bar mit STATS und
+  DINOS, `set_tab()`/`get_tab()`-API, Filter via `def.category`).
+- `core/run_scene/run.gd` — `_resolve_unlocked_dino_id()` Fallback.
+- `content/dinos/velociraptor.tres` (80 HP / 240 Speed, 200 amber unlock)
+- `content/dinos/stegosaurus.tres` (200 HP / 130 Speed, 300 amber unlock)
+- `content/upgrades/dino_unlock_velociraptor.tres`
+- `content/upgrades/dino_unlock_stegosaurus.tres`
+- `tests/unit/test_multi_dino.gd` — 17 Tests.
+
+### Spielfühl-Konsequenz (v0.4.0 gesamt)
+- **Map sieht nach erhabener Plattform aus** (Dirt-Sides + Blumen
+  + Crystals + Charcoal-Background) — Mood-Reference deutlich näher
+- **Player als grüner Raptor erkennbar** statt gelbes Quadrat
+- **Wechselnde Boss-Encounters**: T-Prime stomps, Triceratops charges
+- **Loop ist tiefer**: Bernstein → Stat-Upgrades + Dino-Unlocks
+- **Drei Spielstile**: Allrounder / Glaskanone / Tank
+
+### Public-API additiv (v0.4.0 gesamt)
+- `UpgradeDef.category`, `unlock_dino_id`
+- `DinoDef.unlock_upgrade_id`
+- `MetaProgression.is_dino_unlocked(dino_id)`
+- `ShopOverlay.set_tab(tab)`, `get_tab()`, `current_tab` @export
+- `BossCharge` Resource-Schema + `compute_charge_velocity` (static)
+- `BossMob.start_charge(charge)`, `is_charging()`
+- `IsoWorld.decoration_density`, `side_face_depth`
+- ContentLoader hat **8 Types**, **3 Dinos**, **2 Bosse**, **2 Maps**
+
+### Project-Version
+- `config/version` von `0.2.0` → **`0.4.0`**
+
+---
+
+### Added
+- **ADR 0043:** Zweiter Boss + Zweite Map — Modder-Surface validiert
+  durch eigenen Boss + Map nur via .tres-Files (kein Code-Touch).
+- `core/content/abilities/boss_charge.gd` — `BossCharge extends BossAbility`
+  mit `charge_speed`, `charge_duration`, `damage`. Pure-Function-
+  `compute_charge_velocity(boss_pos, player_pos, speed)`.
+- `content/bosses/triceratops_charge.tres` — neuer Boss:
+  - 1000 HP / 75 Bernstein
+  - Phase 1 Mid (66%): Charge cd=8s, 30 dmg
+  - Phase 2 Rage (33%): Charge cd=5s, 40 dmg, schneller
+  - Tint braun, etwas schneller im Endgame
+- `content/maps/forest_clearing.tres` — 12×12 Map mit
+  decoration_density implizit (lese aus IsoWorld), camera_padding (60,40)
+- `content/waves/wave_10_triceratops.tres` — überschreibt Welle 10
+  von T-Prime auf Triceratops (alte ID wave_10_tyrannosaurus jetzt
+  als wave_25_tyrannosaurus für target_wave_index=25)
+- `content/waves/wave_15_tyrannosaurus.tres` — Welle 15 → T-Prime
+- `content/waves/wave_20_triceratops.tres` — Welle 20 → Triceratops
+- `core/boss/boss_mob.gd` erweitert um:
+  - `_charge_state: Dictionary` (velocity, remaining, damage)
+  - `start_charge(charge: BossCharge)` — Public-API von Ability gerufen
+  - `_apply_charge_movement(delta)` — überschreibt Direkt-Walk
+  - `is_charging()` — Test-/UI-Hook
+- `tests/unit/test_boss_charge.gd` — 14 Tests (Pure-Math,
+  Boss-Wiring, Charge-State, Wave-Rotation, Map-Loading).
+- locale/{de,en}.po um Triceratops + Forest-Clearing-Keys.
+- BALANCE.csv um 2 neue Einträge (jetzt 30 total).
+
+### Boss-Wave-Rotation
+- Welle 5: T-Prime (Stomp in Rage)
+- Welle 10: Triceratops (Charge in Mid + Rage)
+- Welle 15: T-Prime
+- Welle 20: Triceratops
+- Welle 25: T-Prime (alte wave_10 nun hier)
+
+### Public-API additiv
+- `BossCharge` Resource-Schema
+- `BossCharge.compute_charge_velocity(...)` (static)
+- `BossMob.start_charge(charge)`, `is_charging()` -> bool
+- ContentLoader hat jetzt **2 Bosse** und **2 Maps**
+
+### Added
+- **ADR 0042:** Raptor-Composite-Visual — `trex.tres` bekommt
+  Polygon2D-Composite als Default-Visual. Player rendert nicht mehr
+  als gelbes Quadrat sondern als grüner Velociraptor mit Schwanz,
+  Beinen, Kopf, Auge und Rücken-Akzent.
+- `art/player/raptor_composite.tscn` — Node2D mit 8 Polygon2D-
+  Children (Tail, BackLeg, FrontLeg, Body, Head, Jaw, Eye,
+  BackRidge), Farben aus `Palette.PLAYER_BODY` (mid green) und
+  `Palette.PLAYER_ACCENT` (dark green).
+- `content/dinos/trex.tres` — `visual_scene` jetzt mit Reference
+  auf `raptor_composite.tscn`, `visual_pivot_offset = (0, -4)`.
+- `tests/unit/test_visual_provider.gd` — Default-trex-Test
+  angepasst (visual_scene ist jetzt nicht mehr null).
+
+### Spielfühl-Konsequenz
+- Player ist visuell als **grüner Raptor** erkennbar — Mood-
+  Reference deutlich näher
+- ColorRect-Mode bleibt Fallback wenn `visual_scene = null`
+  (Backward-Kompat für Test-Mocks)
+
+### Added
+- **ADR 0041:** Iso-Map-Visual-Polish — Mood-Reference-Annäherung
+  ohne echte Sprite-PNGs. IsoWorld zeigt jetzt:
+  - **Dirt-Side-Faces** an unterer/rechter Plattform-Kante
+    (Trapez-Polygon2D mit Gradient DIRT_SIDE_TOP→BOTTOM)
+  - **Decorations** (programmatisch): Blumen rot/gelb/lila
+    + Crystal-Spike grün, deterministisch via Tile-Hash-RNG
+  - **BG_CHARCOAL-Background** als CanvasLayer-Child (layer=-100)
+- `core/world/iso_world.gd` erweitert um:
+  - `@export var decoration_density: float = 0.20`
+  - `@export var side_face_depth: float = 18.0`
+  - `_build_tiles` erstellt jetzt zusätzlich `Sides`- und
+    `Decorations`-Container
+  - `_is_edge_tile`, `_make_side_polygon`, `_build_decorations`,
+    `_make_random_decor`, `_make_flower_polygon`, `_make_crystal_polygon`
+- `core/run_scene/run.tscn` — neues `BackgroundLayer` (CanvasLayer
+  -100) mit ColorRect in Palette.BG_CHARCOAL.
+- `tests/unit/test_iso_world.gd` — `+ 6 Visual-Polish-Tests`.
+
+### Spielfühl-Konsequenz
+- Map sieht erstmals nach **erhabener Plattform** aus (Dirt-Sides
+  zeigen die Plattform-Tiefe)
+- **Blumen + Crystals** geben der Map Charakter — nicht mehr
+  uniformer Tile-Mesh
+- **Charcoal-Background** statt Default-Grau — passt zur Mood-Reference
+
+### Public-API additiv
+- `IsoWorld.decoration_density: float` (@export)
+- `IsoWorld.side_face_depth: float` (@export)
+
+---
+
+## [0.2.0] - 2026-05-06
 
 ---
 

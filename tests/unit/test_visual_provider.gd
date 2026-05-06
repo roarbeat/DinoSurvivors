@@ -230,7 +230,11 @@ func test_existing_boss_has_visual_scene_null() -> void:
 	assert_null(t.visual_scene)
 
 
-func test_existing_dino_has_visual_scene_null() -> void:
+func test_trex_now_uses_raptor_composite_visual() -> void:
+	# ADR 0042: trex.tres bekommt eine Default-visual_scene
+	# (raptor_composite.tscn). Kein-null mehr.
 	var trex: DinoDef = ContentLoader.get_or_null(&"dino", &"trex") as DinoDef
 	assert_not_null(trex)
-	assert_null(trex.visual_scene)
+	assert_not_null(trex.visual_scene,
+		"trex soll jetzt raptor_composite als Default haben (ADR 0042)")
+	assert_eq(trex.visual_pivot_offset, Vector2(0, -4))

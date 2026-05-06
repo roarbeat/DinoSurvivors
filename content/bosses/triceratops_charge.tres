@@ -1,0 +1,68 @@
+[gd_resource type="Resource" script_class="BossDef" load_steps=8 format=3 uid="uid://dino_boss_triceratops_charge"]
+
+[ext_resource type="Script" path="res://core/content/boss_def.gd" id="1_bossdef"]
+[ext_resource type="PackedScene" uid="uid://dino_boss_mob" path="res://core/boss/boss_mob.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://core/content/boss_phase.gd" id="3_phase"]
+[ext_resource type="Script" path="res://core/content/abilities/boss_charge.gd" id="4_charge"]
+
+[sub_resource type="Resource" id="ability_charge_mid"]
+script = ExtResource("4_charge")
+id = &"triceratops_charge_mid"
+cooldown = 8.0
+initial_delay = 2.5
+charge_speed = 500.0
+charge_duration = 0.5
+damage = 30.0
+
+[sub_resource type="Resource" id="ability_charge_rage"]
+script = ExtResource("4_charge")
+id = &"triceratops_charge_rage"
+cooldown = 5.0
+initial_delay = 1.5
+charge_speed = 700.0
+charge_duration = 0.6
+damage = 40.0
+
+[sub_resource type="Resource" id="phase_spawn_t"]
+script = ExtResource("3_phase")
+hp_threshold = 1.0
+speed_multiplier = 1.0
+damage_multiplier = 1.0
+color_tint = Color(1, 1, 1, 1)
+label_key = &""
+abilities = []
+
+[sub_resource type="Resource" id="phase_mid_t"]
+script = ExtResource("3_phase")
+hp_threshold = 0.66
+speed_multiplier = 1.1
+damage_multiplier = 1.1
+color_tint = Color(1, 0.9, 0.8, 1)
+label_key = &"boss.triceratops_charge.phase_mid"
+abilities = [SubResource("ability_charge_mid")]
+
+[sub_resource type="Resource" id="phase_rage_t"]
+script = ExtResource("3_phase")
+hp_threshold = 0.33
+speed_multiplier = 1.3
+damage_multiplier = 1.3
+color_tint = Color(1, 0.7, 0.5, 1)
+label_key = &"boss.triceratops_charge.phase_rage"
+abilities = [SubResource("ability_charge_rage")]
+
+[resource]
+script = ExtResource("1_bossdef")
+id = &"triceratops_charge"
+display_name_key = &"boss.triceratops_charge.name"
+description_key = &"boss.triceratops_charge.tooltip"
+source_mod_id = &""
+override_existing = false
+max_health = 1000.0
+phases = [SubResource("phase_spawn_t"), SubResource("phase_mid_t"), SubResource("phase_rage_t")]
+intro_text_key = &"boss.triceratops_charge.intro"
+reward_currency_amount = 75
+scene = ExtResource("2_scene")
+speed = 60.0
+damage = 35.0
+body_color = Color(0.5, 0.4, 0.25, 1)
+body_size = Vector2(48, 36)

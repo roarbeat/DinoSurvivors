@@ -26,6 +26,17 @@ extends Node2D
 @export var map_id: StringName = &"default"
 
 
+## Resolved den dino_id durch Unlock-Check (ADR 0044). Wenn der gewählte
+## Dino locked ist, wird auf trex zurückgefallen.
+func _resolve_unlocked_dino_id() -> StringName:
+	if get_node_or_null("/root/MetaProgression") == null:
+		return dino_id
+	if MetaProgression.is_dino_unlocked(dino_id):
+		return dino_id
+	push_warning("RunScene: dino '%s' nicht unlocked, fallback auf trex" % dino_id)
+	return &"trex"
+
+
 # ---------------------------------------------------------------------------
 # Children
 # ---------------------------------------------------------------------------
@@ -58,7 +69,7 @@ func _ready() -> void:
 	# 1. Dino-Resource auflösen
 	var def: DinoDef = null
 	if get_node_or_null("/root/ContentLoader") != null:
-		def = ContentLoader.get_or_null(&"dino", dino_id) as DinoDef
+		def = ContentLoader.get_or_null(&"dino", _resolve_unlocked_dino_id()) as DinoDef
 	if def == null:
 		push_warning("RunScene: dino_id '%s' nicht im ContentLoader" % dino_id)
 		return
@@ -194,7 +205,7 @@ func restart_run() -> void:
 func _spawn_player_and_start() -> void:
 	var def: DinoDef = null
 	if get_node_or_null("/root/ContentLoader") != null:
-		def = ContentLoader.get_or_null(&"dino", dino_id) as DinoDef
+		def = ContentLoader.get_or_null(&"dino", _resolve_unlocked_dino_id()) as DinoDef
 	if def == null:
 		return
 	if def.character_scene == null:

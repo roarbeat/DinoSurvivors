@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MapDef" load_steps=2 format=3 uid="uid://dino_map_forest_clearing"]
+
+[ext_resource type="Script" path="res://core/content/map_def.gd" id="1_mapdef"]
+
+[resource]
+script = ExtResource("1_mapdef")
+id = &"forest_clearing"
+display_name_key = &"map.forest_clearing.name"
+description_key = &"map.forest_clearing.tooltip"
+source_mod_id = &""
+override_existing = false
+grid_size = Vector2i(12, 12)
+path_row = 6
+path_col = 6
+deterministic_colors = true
+biome_label_key = &"map.forest_clearing.banner"
+camera_padding = Vector2(60, 40)

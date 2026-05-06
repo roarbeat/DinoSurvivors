@@ -178,6 +178,19 @@ func list_upgrade_levels() -> Dictionary:
 	return _upgrade_levels.duplicate()
 
 
+## Prüft ob ein Dino spielbar ist (ADR 0044). Default-Dinos ohne
+## `unlock_upgrade_id` sind always-unlocked.
+func is_dino_unlocked(dino_id: StringName) -> bool:
+	if get_node_or_null("/root/ContentLoader") == null:
+		return false
+	var def: DinoDef = ContentLoader.get_or_null(&"dino", dino_id) as DinoDef
+	if def == null:
+		return false
+	if String(def.unlock_upgrade_id) == "":
+		return true  # always-unlocked
+	return get_upgrade_level(def.unlock_upgrade_id) >= 1
+
+
 ## Aggregiert alle gekauften Upgrades zu einem Modifier-Schema-Dict
 ## (gleiche Struktur wie PlayerMutations.get_aggregated):
 ##   { "outgoing": [], "incoming": [], "unhandled": {stat_key: value} }

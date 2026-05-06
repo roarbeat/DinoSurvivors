@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://dino_raptor_composite"]
+
+[node name="RaptorComposite" type="Node2D"]
+
+[node name="Tail" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(8, -2, 14, 0, 18, 4, 14, 6, 8, 4)
+color = Color(0.173, 0.369, 0.157, 1)
+
+[node name="BackLeg" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-3, 4, -1, 4, -1, 12, -4, 12, -5, 10)
+color = Color(0.173, 0.369, 0.157, 1)
+
+[node name="FrontLeg" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(2, 4, 4, 4, 5, 12, 1, 12, 1, 10)
+color = Color(0.173, 0.369, 0.157, 1)
+
+[node name="Body" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-4, -2, 4, -4, 8, -2, 9, 2, 6, 5, -2, 6, -5, 3, -6, 0)
+color = Color(0.373, 0.659, 0.227, 1)
+
+[node name="Head" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-9, -3, -5, -5, -3, -3, -3, 0, -7, 1, -10, 0)
+color = Color(0.373, 0.659, 0.227, 1)
+
+[node name="Jaw" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-13, -1, -10, 0, -10, 1, -13, 1)
+color = Color(0.173, 0.369, 0.157, 1)
+
+[node name="Eye" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-7, -3, -6, -3, -6, -2, -7, -2)
+color = Color(0.05, 0.05, 0.05, 1)
+
+[node name="BackRidge" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-2, -4, 0, -5, 2, -5, 4, -4, 4, -3, 0, -3, -2, -3)
+color = Color(0.173, 0.369, 0.157, 1)

@@ -11,6 +11,14 @@
 [node name="Run" type="Node2D"]
 script = ExtResource("1_run")
 
+[node name="BackgroundLayer" type="CanvasLayer" parent="."]
+layer = -100
+
+[node name="Background" type="ColorRect" parent="BackgroundLayer"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.227, 0.239, 0.251, 1)
+
 [node name="WorldLayer" type="Node2D" parent="."]
 z_index = -10
 

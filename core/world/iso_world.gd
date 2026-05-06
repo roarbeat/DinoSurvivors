@@ -41,6 +41,13 @@ const TILE_SIZE: Vector2i = Vector2i(64, 32)
 ## stabile Ergebnisse haben.
 @export var deterministic_colors: bool = true
 
+## Decoration-Density (ADR 0041). Anteil der Grass-Tiles, auf denen
+## eine Blume oder ein Crystal erscheint. 0.0 = keine Decor.
+@export var decoration_density: float = 0.20
+
+## Sichtbare Tiefe der Dirt-Side-Faces in Pixeln.
+@export var side_face_depth: float = 18.0
+
 # State (ADR 0036)
 var _map_def: MapDef = null
 
@@ -151,16 +158,43 @@ func _build_tiles() -> void:
 	if existing != null:
 		remove_child(existing)
 		existing.queue_free()
+	var existing_sides := get_node_or_null("Sides")
+	if existing_sides != null:
+		remove_child(existing_sides)
+		existing_sides.queue_free()
+	var existing_decor := get_node_or_null("Decorations")
+	if existing_decor != null:
+		remove_child(existing_decor)
+		existing_decor.queue_free()
+
+	# Sides zuerst (z-Order: hinter Tiles)
+	var sides_container := Node2D.new()
+	sides_container.name = "Sides"
+	add_child(sides_container)
 
 	var container := Node2D.new()
 	container.name = "Tiles"
 	add_child(container)
+
+	# Decorations zuletzt (über Tiles, hinter Mobs)
+	var decor_container := Node2D.new()
+	decor_container.name = "Decorations"
+	add_child(decor_container)
 
 	for y in grid_size.y:
 		for x in grid_size.x:
 			var tile := Vector2i(x, y)
 			var poly := _make_tile_polygon(tile)
 			container.add_child(poly)
+
+			# Side-Face nur an unteren/rechten Edge-Tiles (ADR 0041)
+			if _is_edge_tile(tile):
+				var side := _make_side_polygon(tile)
+				if side != null:
+					sides_container.add_child(side)
+
+	# Decorations nach allen Tiles (deterministisch)
+	_build_decorations(decor_container)
 
 
 ## Erzeugt einen einzelnen Tile-Diamond als Polygon2D.
@@ -181,6 +215,115 @@ func _make_tile_polygon(tile: Vector2i) -> Polygon2D:
 
 	poly.color = _color_for_tile(tile)
 	return poly
+
+
+# ---------------------------------------------------------------------------
+# Side-Faces + Decorations (ADR 0041)
+# ---------------------------------------------------------------------------
+
+## true wenn Tile am unteren oder rechten Plattform-Rand sitzt
+## (Iso-View: nur unten/rechts sichtbar — oben/links liegen
+## nicht im Frustum).
+func _is_edge_tile(tile: Vector2i) -> bool:
+	if grid_size.x <= 0 or grid_size.y <= 0:
+		return false
+	return tile.x == grid_size.x - 1 or tile.y == grid_size.y - 1
+
+
+## Erzeugt das Dirt-Side-Polygon unter einem Edge-Tile. Trapez-Form,
+## reicht side_face_depth Pixel nach unten.
+func _make_side_polygon(tile: Vector2i) -> Polygon2D:
+	var poly := Polygon2D.new()
+	poly.name = "Side_%d_%d" % [tile.x, tile.y]
+	poly.position = tile_to_iso(tile)
+
+	var hw := float(TILE_SIZE.x) * 0.5
+	var hh := float(TILE_SIZE.y) * 0.5
+	var d := side_face_depth
+
+	# Trapez-Form: oben = unteres Diamond-Profil, unten verschoben um (0, d).
+	# Sichtbar nur die Hälfte des Diamonds (links und rechts unten).
+	poly.polygon = PackedVector2Array([
+		Vector2(-hw, 0),       # links Diamond-Mitte
+		Vector2(0, hh),        # unten Diamond-Spitze
+		Vector2(hw, 0),        # rechts Diamond-Mitte
+		Vector2(hw, d),        # rechts unten
+		Vector2(0, hh + d),    # unten unten
+		Vector2(-hw, d),       # links unten
+	])
+	# Gradient von DIRT_SIDE_TOP nach _BOTTOM via vertex_colors
+	var c_top := Palette.DIRT_SIDE_TOP
+	var c_bot := Palette.DIRT_SIDE_BOTTOM
+	poly.vertex_colors = PackedColorArray([
+		c_top, c_top, c_top,
+		c_bot, c_bot, c_bot,
+	])
+	return poly
+
+
+## Verteilt Decorations deterministisch auf Grass-Tiles.
+func _build_decorations(container: Node2D) -> void:
+	if decoration_density <= 0.0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = grid_size.x * 73 + grid_size.y * 191
+	for y in grid_size.y:
+		for x in grid_size.x:
+			var tile := Vector2i(x, y)
+			if is_path_tile(tile):
+				continue
+			if rng.randf() > decoration_density:
+				continue
+			var decor := _make_random_decor(rng, tile)
+			if decor != null:
+				container.add_child(decor)
+
+
+## Erzeugt eine zufällige Decor (Blume oder Crystal) auf einem Tile.
+func _make_random_decor(rng: RandomNumberGenerator, tile: Vector2i) -> Node2D:
+	var node := Polygon2D.new()
+	node.name = "Decor_%d_%d" % [tile.x, tile.y]
+	node.position = tile_to_iso(tile)
+	# Leichter Offset innerhalb des Diamond
+	node.position += Vector2(
+		rng.randf_range(-12.0, 12.0),
+		rng.randf_range(-4.0, 4.0),
+	)
+	# Decor-Type wählen
+	var t := rng.randf()
+	if t < 0.30:
+		_make_flower_polygon(node, Palette.FLOWER_RED)
+	elif t < 0.55:
+		_make_flower_polygon(node, Palette.FLOWER_YELLOW)
+	elif t < 0.75:
+		_make_flower_polygon(node, Palette.FLOWER_LILA)
+	else:
+		_make_crystal_polygon(node, Palette.CRYSTAL_GREEN)
+	return node
+
+
+## Setzt das Polygon-Shape auf eine kleine Blume (5-eckig).
+func _make_flower_polygon(poly: Polygon2D, c: Color) -> void:
+	var r: float = 3.0
+	var pts: PackedVector2Array = PackedVector2Array()
+	for i in 5:
+		var ang: float = TAU * float(i) / 5.0 - PI * 0.5
+		pts.append(Vector2(cos(ang), sin(ang)) * r)
+	poly.polygon = pts
+	poly.color = c
+
+
+## Setzt das Polygon-Shape auf einen Crystal-Spike (hexagonal, schmal hoch).
+func _make_crystal_polygon(poly: Polygon2D, c: Color) -> void:
+	poly.polygon = PackedVector2Array([
+		Vector2(0, -6),
+		Vector2(3, -2),
+		Vector2(3, 2),
+		Vector2(0, 4),
+		Vector2(-3, 2),
+		Vector2(-3, -2),
+	])
+	poly.color = c
 
 
 ## Liefert die Color für ein Tile basierend auf Pfad-/Grass-Logik.

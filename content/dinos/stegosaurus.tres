@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DinoDef" load_steps=4 format=3 uid="uid://dino_dino_trex"]
+[gd_resource type="Resource" script_class="DinoDef" load_steps=4 format=3 uid="uid://dino_dino_stegosaurus"]
 
 [ext_resource type="Script" path="res://core/content/dino_def.gd" id="1_dinodef"]
 [ext_resource type="PackedScene" uid="uid://dino_player_character" path="res://core/player/player_character.tscn" id="2_scene"]
@@ -6,16 +6,17 @@
 
 [resource]
 script = ExtResource("1_dinodef")
-id = &"trex"
-display_name_key = &"dino.trex.name"
-description_key = &"dino.trex.tooltip"
+id = &"stegosaurus"
+display_name_key = &"dino.stegosaurus.name"
+description_key = &"dino.stegosaurus.tooltip"
 source_mod_id = &""
 override_existing = false
-max_health = 120.0
-base_speed = 180.0
-base_damage = 15.0
-base_attack_rate = 0.8
-pickup_radius = 80.0
+max_health = 200.0
+base_speed = 130.0
+base_damage = 22.0
+base_attack_rate = 0.6
+pickup_radius = 70.0
 character_scene = ExtResource("2_scene")
 visual_scene = ExtResource("3_visual")
 visual_pivot_offset = Vector2(0, -4)
+unlock_upgrade_id = &"dino_unlock_stegosaurus"

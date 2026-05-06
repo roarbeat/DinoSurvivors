@@ -35,6 +35,10 @@ var _current_phase_idx: int = -1
 ## Zurückgesetzt bei Phase-Wechsel.
 var _ability_cooldowns: Dictionary = {}
 
+## Charge-State (ADR 0043). Wenn nicht null, läuft gerade ein Charge:
+## { "velocity": Vector2, "remaining": float, "damage": float }
+var _charge_state: Dictionary = {}
+
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -178,6 +182,11 @@ func _tick_abilities(delta: float) -> void:
 
 
 func _move_toward_player(delta: float) -> void:
+	# Charge-Override (ADR 0043): wenn Boss gerade chargt, nutze
+	# Charge-Velocity statt Standard-Direkt-Walk.
+	if not _charge_state.is_empty():
+		_apply_charge_movement(delta)
+		return
 	var player := _find_nearest_player()
 	if player == null:
 		return
@@ -186,6 +195,42 @@ func _move_toward_player(delta: float) -> void:
 		return
 	var dir: Vector2 = diff.normalized()
 	global_position += dir * get_speed() * delta
+
+
+## Wendet Charge-Movement an und decrementet Restzeit.
+## Charge endet wenn `remaining <= 0`.
+func _apply_charge_movement(delta: float) -> void:
+	var velocity: Vector2 = _charge_state.get("velocity", Vector2.ZERO)
+	global_position += velocity * delta
+	var remaining: float = float(_charge_state.get("remaining", 0.0)) - delta
+	if remaining <= 0.0:
+		_charge_state = {}
+	else:
+		_charge_state["remaining"] = remaining
+
+
+## Public-API von BossCharge.trigger() aufgerufen. Setzt Charge-State.
+func start_charge(charge: BossCharge) -> void:
+	if charge == null:
+		return
+	var player := _find_nearest_player()
+	if player == null:
+		return
+	var velocity := BossCharge.compute_charge_velocity(
+		global_position,
+		player.global_position,
+		charge.charge_speed,
+	)
+	_charge_state = {
+		"velocity": velocity,
+		"remaining": charge.charge_duration,
+		"damage": charge.damage,
+	}
+
+
+## true wenn Boss gerade chargt (für Tests + UI-Telegraphs).
+func is_charging() -> bool:
+	return not _charge_state.is_empty()
 
 
 func _find_nearest_player() -> Node2D:
