@@ -1211,6 +1211,86 @@ BossMob._on_died (lokales Signal von Health):
 - Boss-spezifische Abilities (Stomp, Roar)
 - Music-Switch bei Boss-Spawn
 
+## Pattern: MapDef als Content-Resource (ADR 0036)
+
+Map-Layouts sind data-driven über `MapDef`-Resources im
+`content/maps/`-Folder.
+
+**Schema**
+
+```gdscript
+class MapDef extends ContentItem:
+    @export var grid_size: Vector2i = Vector2i(8, 8)
+    @export var path_row: int = 4         # -1 = kein Pfad
+    @export var path_col: int = 4
+    @export var deterministic_colors: bool = true
+    @export var biome_label_key: StringName = &""
+```
+
+**IsoWorld-Integration**
+
+```gdscript
+IsoWorld.set_map_def(def: MapDef)  # übernimmt Konfig + rebuilds Tiles
+IsoWorld.get_map_def() -> MapDef
+```
+
+**RunScene-Integration**
+
+```gdscript
+@export var map_id: StringName = &"default"
+
+func _ready():
+    var map_def := ContentLoader.get_or_null(&"map", map_id) as MapDef
+    if map_def != null:
+        iso_world.set_map_def(map_def)
+```
+
+**Default-Map**
+
+`content/maps/default.tres` repliziert die heutigen hardcoded-Werte
+(8×8, Cross-Pfad bei (4,4), deterministic_colors=true) — Backward-
+Kompatibilität gewahrt.
+
+**Modder-Workflow**
+
+```
+user://mods/my_mod/content/maps/desert.tres   # eigene Map
+                                              # mit override_existing=false
+                                              # → neue Map-ID, im Map-Selection-UI später wählbar
+```
+
+## Pattern: Y-Sort-Layering (ADR 0034)
+
+In einer isometrischen Welt (ADR 0031) müssen Mobs nach ihrer
+Y-Position rendern: weiter unten in der Welt = vor näher zur Kamera
+liegenden Mobs. Godot 4 macht das automatisch via
+`y_sort_enabled = true` auf einem Node2D-Container.
+
+**Container-Struktur**
+
+```
+Run (Node2D)
+├── PlayerSlot (Node2D, y_sort_enabled=true)
+├── EnemyContainer (Node2D, y_sort_enabled=true)
+```
+
+Alle Mobs unter EnemyContainer/PlayerSlot werden automatisch nach
+ihrer `global_position.y` (bzw. `y_sort_origin`) sortiert.
+
+**Pivot-Konvention**
+
+Ideal: Mob-Pivot sitzt am Fuß-Punkt (Y-Bottom). Bei ColorRect-Mobs
+(v1) ist der Pivot in der Mitte — Y-Sort funktioniert grundsätzlich,
+aber kann bei Mobs auf gleicher Y-Höhe leichte Render-Reihenfolge-
+Wackler erzeugen. Sobald echte Sprites mit Foot-Point-Pivot landen
+(ADR 0027 Visual-Provider), wird's pixel-perfect.
+
+**Z-Index ergänzt Y-Sort**
+
+WorldLayer hat `z_index = -10` → bleibt immer unter den Mobs,
+unabhängig von Y. CanvasLayer-Overlays (HUD, GameOver) sind
+koord-system-unabhängig und unbeeinflusst.
+
 ## Pattern: RunCamera (ADR 0032)
 
 `RunCamera` ist eine `Camera2D`-Subklasse, die einem Target-Node2D mit
@@ -1261,8 +1341,32 @@ Run (Node2D)
 └── GameOverLayer
 ```
 
-`run_camera.set_target(_player)` + `snap_to_target()` direkt nach
-Player-Spawn → kein "fly-in" beim Run-Start.
+`run_camera.set_target(_player)` + `attach_to_world(iso_world)` +
+`snap_to_target()` direkt nach Player-Spawn → kein "fly-in" beim
+Run-Start, Camera klemmt automatisch am Plattform-Rand.
+
+**Auto-Bounds (ADR 0033)**
+
+`RunCamera.attach_to_world(iso_world)` liest `IsoWorld.world_bounds()`
+und ruft `set_bounds()` damit auf. So bleibt die Camera auch bei
+großem Player-Abstand vom Center innerhalb der Plattform.
+
+**Camera-Shake (ADR 0035, Trauma-System)**
+
+```gdscript
+RunCamera.add_trauma(0.3)      # +Trauma von 0.0–1.0 (clampt)
+RunCamera.set_trauma(0.5)      # direkt setzen
+RunCamera.compute_shake_offset(trauma, max_offset, rng) → Vector2 (static)
+RunCamera.compute_trauma_after_decay(trauma, decay_per_s, delta) → float (static)
+```
+
+EventBus-Hooks sind hardcoded:
+- `player_damaged` → +0.3 Trauma
+- `boss_defeated`  → +0.7 Trauma
+
+Shake-Offset wirkt auf `Camera2D.offset` (additiv zur global_position),
+sodass Follow-Lerp und Bounds-Clamping unverändert bleiben. Decay
+ist Frame-Rate-Independent (1.5/s Standard).
 
 **Zoom-Konvention**
 

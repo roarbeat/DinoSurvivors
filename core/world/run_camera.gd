@@ -39,6 +39,31 @@ extends Camera2D
 
 
 # ---------------------------------------------------------------------------
+# Camera-Shake (Trauma-System, ADR 0035)
+# ---------------------------------------------------------------------------
+
+## Maximaler Shake-Offset in Pixel bei trauma=1.0.
+@export var max_shake_offset: float = 8.0
+
+## Trauma-Decay-Geschwindigkeit. 1.5 = von 1.0 auf 0.0 in ~0.67s.
+@export var trauma_decay_per_second: float = 1.5
+
+## Trauma-Wert bei EventBus.player_damaged.
+@export var trauma_on_player_damaged: float = 0.3
+
+## Trauma-Wert bei EventBus.boss_defeated.
+@export var trauma_on_boss_defeated: float = 0.7
+
+## Shake-Mute (Test-Hook). Wenn true, ignoriert add_trauma().
+@export var shake_muted: bool = false
+
+## Aktueller Trauma-Wert (0.0 – 1.0). Public-Read für Tests/Debug-UI.
+var trauma: float = 0.0
+
+var _shake_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+
+# ---------------------------------------------------------------------------
 # Lifecycle
 # ---------------------------------------------------------------------------
 
@@ -50,21 +75,37 @@ func _ready() -> void:
 	if enable_limits:
 		_apply_limits()
 
+	# RNG für Shake-Noise initialisieren (deterministische Tests können
+	# _shake_rng.seed = N setzen).
+	_shake_rng.randomize()
+
+	# EventBus-Hooks für Camera-Shake (ADR 0035)
+	if get_node_or_null("/root/EventBus") != null:
+		EventBus.player_damaged.connect(_on_player_damaged)
+		EventBus.boss_defeated.connect(_on_boss_defeated)
+
 	make_current()
 
 
 func _process(delta: float) -> void:
-	if target == null or not is_instance_valid(target):
-		return
-	global_position = compute_next_position(
-		global_position,
-		target.global_position,
-		follow_smoothing,
-		delta,
-		pixel_snap,
-	)
-	if enable_limits:
-		_clamp_position_to_bounds()
+	# Follow-Logic
+	if target != null and is_instance_valid(target):
+		global_position = compute_next_position(
+			global_position,
+			target.global_position,
+			follow_smoothing,
+			delta,
+			pixel_snap,
+		)
+		if enable_limits:
+			_clamp_position_to_bounds()
+
+	# Trauma-Decay (ADR 0035) — pro Sekunde, nicht pro Frame
+	if trauma > 0.0:
+		trauma = max(0.0, trauma - trauma_decay_per_second * delta)
+	# Shake-Offset additiv auf Camera2D.offset, damit follow-Position
+	# unverändert bleibt
+	offset = compute_shake_offset(trauma, max_shake_offset, _shake_rng)
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +134,18 @@ func set_follow_smoothing(value: float) -> void:
 	follow_smoothing = max(0.0, value)
 
 
+## Bindet die Camera an die Bounds einer IsoWorld (ADR 0033).
+## Liest `IsoWorld.world_bounds()` und ruft set_bounds() entsprechend.
+## No-op wenn world null ist oder leeres Rect liefert.
+func attach_to_world(world: IsoWorld) -> void:
+	if world == null:
+		return
+	var b: Rect2 = world.world_bounds()
+	if b.size == Vector2.ZERO:
+		return
+	set_bounds(b.position, b.position + b.size)
+
+
 ## Setzt die Bounds. Wenn min > max in einer Achse, wird automatisch
 ## getauscht. enable_limits wird auf true gesetzt.
 func set_bounds(min_pos: Vector2, max_pos: Vector2) -> void:
@@ -114,6 +167,60 @@ func set_bounds(min_pos: Vector2, max_pos: Vector2) -> void:
 # ---------------------------------------------------------------------------
 # Pure Function (Test-Hook)
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Camera-Shake API (ADR 0035)
+# ---------------------------------------------------------------------------
+
+## Erhöht den Trauma-Wert um amount, geclamped auf [0, 1].
+## No-op wenn shake_muted=true (Test-Hook).
+func add_trauma(amount: float) -> void:
+	if shake_muted:
+		return
+	trauma = clampf(trauma + amount, 0.0, 1.0)
+
+
+## Setzt den Trauma-Wert direkt. Für Test-Hooks.
+func set_trauma(value: float) -> void:
+	trauma = clampf(value, 0.0, 1.0)
+
+
+## Pure Function: berechnet den Shake-Offset basierend auf Trauma².
+## Squared-Curve gibt sanften Einstieg (kleines Trauma → wenig Shake)
+## und starken Peak (großes Trauma → spürbarer Tremor).
+##
+## Test-Hook: RNG kann gesetzt werden, um deterministische Tests zu
+## ermöglichen.
+static func compute_shake_offset(
+	current_trauma: float,
+	max_offset: float,
+	rng: RandomNumberGenerator,
+) -> Vector2:
+	if current_trauma <= 0.0:
+		return Vector2.ZERO
+	var t2: float = current_trauma * current_trauma
+	var dx: float = (rng.randf() * 2.0 - 1.0) * max_offset * t2
+	var dy: float = (rng.randf() * 2.0 - 1.0) * max_offset * t2
+	return Vector2(dx, dy)
+
+
+## Trauma-Decay-Helper als pure function (Test-Hook).
+static func compute_trauma_after_decay(
+	current_trauma: float,
+	decay_per_second: float,
+	delta: float,
+) -> float:
+	return max(0.0, current_trauma - decay_per_second * delta)
+
+
+## EventBus-Handler — wird in _ready() verbunden.
+func _on_player_damaged(_amount: float, _source_id: StringName) -> void:
+	add_trauma(trauma_on_player_damaged)
+
+
+func _on_boss_defeated(_boss_id: StringName, _run_time: float) -> void:
+	add_trauma(trauma_on_boss_defeated)
+
 
 ## Berechnet die nächste Camera-Position basierend auf Smooth-Lerp.
 ## Pure function — testbar ohne Frame-Dispatch.

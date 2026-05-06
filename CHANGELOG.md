@@ -7,6 +7,124 @@ angelehnt; SemVer ab 1.0.0.
 ## [Unreleased]
 
 ### Added
+- **ADR 0036:** MapDef als Content-Resource — Map-Layouts sind jetzt
+  data-driven. Designer und Modder können Map-Größe/Pfad-Pattern ändern
+  ohne Code-Touch.
+- `core/content/map_def.gd` — neue Resource (grid_size, path_row,
+  path_col, deterministic_colors, biome_label_key) mit validate().
+- `core/content_loader.gd` — neuer Type `map`
+  (`res://content/maps/`, mod-subpath `maps/`).
+- `content/maps/default.tres` — Standard-Map 1:1 zu den bisher hardcoded
+  IsoWorld-Werten (8×8, Cross-Pfad bei (4,4)).
+- `core/world/iso_world.gd` — `+ set_map_def(def)` und `+ get_map_def()`.
+  set_map_def übernimmt Konfig und ruft `_build_tiles()` auf.
+- `core/run_scene/run.gd` — `+ @export var map_id`, lädt MapDef beim
+  Run-Start und appliziert sie auf IsoWorld bevor Camera attached.
+- `tests/unit/test_map_def.gd` — 7 Tests (Discovery, Validate-Regeln,
+  Field-Loading, Type-Registration).
+- `tests/unit/test_iso_world.gd` — `+ 4 set_map_def-Tests`.
+- `tests/unit/test_content_loader.gd` — map-Type-Check ergänzt.
+- locale/{de,en}.po um 2 map.default-Keys.
+- BALANCE.csv um 1 map-Eintrag erweitert (jetzt 23 total).
+
+### Public-API additiv
+- `MapDef`-Schema mit grid_size, path_row, path_col, deterministic_colors,
+  biome_label_key
+- `IsoWorld.set_map_def(def: MapDef)`, `get_map_def() -> MapDef`
+- `RunScene.map_id: StringName` (@export, default `&"default"`)
+- ContentLoader hat jetzt 7 Types (mutation/enemy/boss/dino/wave/sound/map)
+
+### Designer/Modder-Konsequenz
+- **Map-Tuning ohne Code-Touch**: grid_size in `default.tres` editieren →
+  Re-Import → neue Welt
+- **Mod kann eigene Map ergänzen**: `mod/content/maps/desert.tres`
+  mit eigener grid_size/path-Pattern + override_existing=false → neue
+  Map-ID
+
+### Test-Suite
+- 33 Scripts, 484 Tests (von 471 → +13).
+
+---
+
+### Added
+- **ADR 0035:** Camera-Shake (Trauma-System) — Squirrel-Eiserloh-Pattern.
+  Trauma-Wert decayed exponentiell, Shake-Offset = trauma² × max_offset
+  × noise. EventBus-driven: player_damaged → +0.3, boss_defeated → +0.7.
+- `core/world/run_camera.gd` erweitert um:
+  - `@export var max_shake_offset, trauma_decay_per_second,
+    trauma_on_player_damaged, trauma_on_boss_defeated, shake_muted`
+  - Public-API: `add_trauma(amount)`, `set_trauma(value)`
+  - Pure-Function-Statics: `compute_shake_offset(trauma, max_offset, rng)`,
+    `compute_trauma_after_decay(trauma, decay_per_s, delta)`
+  - EventBus-Subscriptions: `player_damaged` und `boss_defeated`
+- `tests/unit/test_run_camera.gd` — `+ 13 Trauma-Tests`
+  (Default-State, add_trauma-Clamp, mute-Hook, decay-Math,
+  shake-offset-Math, EventBus-Hooks).
+
+### Spielfühl-Konsequenz
+- Treffer fühlen sich wuchtig an — Camera ruckt sichtbar bei jedem
+  Player-Damage (0.3 Trauma → ~0.5s Shake)
+- Boss-Defeat bekommt Tremor-Finale (0.7 Trauma → ~0.8s starker Shake)
+- Pixel-Snap bleibt für die Position-Komponente erhalten — Shake-
+  Offset ist absichtlich sub-pixel (sonst wirkt es zu hart)
+
+### Public-API additiv
+- `RunCamera.add_trauma(amount)`, `set_trauma(value)`
+- `RunCamera.compute_shake_offset(...)` (static)
+- `RunCamera.compute_trauma_after_decay(...)` (static)
+
+---
+
+### Added
+- **ADR 0034:** Y-Sort-Layering — PlayerSlot und EnemyContainer sind
+  jetzt Node2D mit `y_sort_enabled = true`. Mobs rendern automatisch
+  nach Y-Position vor/hinter einander — Voraussetzung für Iso-Tiefe.
+- `core/run_scene/run.tscn` — PlayerSlot/EnemyContainer von `Node` auf
+  `Node2D` mit `y_sort_enabled = true` umgestellt.
+- `tests/unit/test_run_scene.gd` — `+ 2 Y-Sort-Tests`
+  (PlayerSlot/EnemyContainer Node2D + y_sort_enabled).
+
+### Spielfühl-Konsequenz
+- Player rennt visuell vor Enemies durch, die hinter ihm sind, und
+  hinter Enemies, die weiter vorne stehen. Iso-Tiefe ist da.
+
+### Backward-Kompatibilität
+- `Node` → `Node2D`-Wechsel ist Subclass-Beziehung, alle existierenden
+  `add_child`-Calls etc. laufen weiter durch.
+
+---
+
+### Added
+- **ADR 0033:** Camera-Auto-Bounds aus IsoWorld — Camera klemmt
+  automatisch am Plattform-Rand, ohne dass RunScene Bounds-Werte
+  kennen muss.
+- `core/world/iso_world.gd` — `+ world_bounds() -> Rect2` (Pure Function,
+  Diamond-Form berücksichtigt: jeder Tile ragt TILE_SIZE/2 in jede
+  Richtung von seinem Pivot).
+- `core/world/run_camera.gd` — `+ attach_to_world(world: IsoWorld)`
+  Convenience-Helper, ruft `set_bounds()` aus dem World-Rect auf.
+- `core/run_scene/run.gd` — `_spawn_player_and_start` wired die
+  Camera ans IsoWorld via `attach_to_world(iso_world)` direkt vor
+  `snap_to_target()`.
+- `tests/unit/test_iso_world.gd` — `+ 4 world_bounds-Tests` (empty,
+  1×1, 8×8, contains-all-pivots).
+- `tests/unit/test_run_camera.gd` — `+ 3 attach_to_world-Tests`.
+
+### Spielfühl-Konsequenz
+- Player kann nicht mehr aus der Camera-Sicht „über den Rand fallen" —
+  Camera klemmt am 8×8-Plattform-Rand. Der Spieler sieht visuell, wo
+  das Spielfeld endet.
+
+### Public-API additiv
+- `IsoWorld.world_bounds() -> Rect2`
+- `RunCamera.attach_to_world(world: IsoWorld) -> void`
+
+### Test-Suite
+- 32 Scripts, 458 Tests (von 451 → +7).
+
+---
+
+### Added
 - **ADR 0032:** Camera-System (Player-Follow + Bounds) — Camera2D folgt
   dem Player mit Smooth-Lerp, Pixel-Snap für Pixel-Art-Crispness,
   optionale World-Bounds. Pure-Function-Update macht das System

@@ -21,3 +21,4 @@ sound,sfx_player_damaged,N/A,volume_db,0.0,pitch_random_range,0.05,"sfx;hit","St
 sound,sfx_player_died,N/A,volume_db,0.0,pitch_random_range,0.0,"sfx;game_over","Stub. Game-Over-Sting."
 sound,sfx_mutation_picked,N/A,volume_db,1.0,pitch_random_range,0.0,"sfx;ui","Stub. Confirm-Sting."
 sound,sfx_wave_started,N/A,volume_db,-2.0,pitch_random_range,0.0,"sfx;wave","Stub. Build-up."
+map,default,N/A,grid_size,8x8,path_cross,4_4,"map;default","Standard-Map (ADR 0036). Foundation für Multi-Biome."

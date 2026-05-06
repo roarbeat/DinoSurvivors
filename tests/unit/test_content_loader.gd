@@ -48,6 +48,7 @@ func test_types_includes_known_kinds() -> void:
 	assert_true(t.has(&"dino"))
 	assert_true(t.has(&"wave"))
 	assert_true(t.has(&"sound"))
+	assert_true(t.has(&"map"))
 
 
 func test_all_ids_returns_known_mutation() -> void:

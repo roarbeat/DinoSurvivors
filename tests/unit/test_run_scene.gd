@@ -42,6 +42,24 @@ func test_scene_has_player_slot_and_enemy_container() -> void:
 	assert_not_null(_run.get_node_or_null("EnemyContainer"))
 
 
+func test_player_slot_is_y_sort_enabled() -> void:
+	# ADR 0034 — PlayerSlot muss Node2D sein und y_sort_enabled
+	_instance_run_scene()
+	var slot := _run.get_node_or_null("PlayerSlot")
+	assert_true(slot is Node2D,
+		"PlayerSlot muss Node2D sein für Y-Sort")
+	assert_true((slot as Node2D).y_sort_enabled,
+		"PlayerSlot muss y_sort_enabled=true tragen")
+
+
+func test_enemy_container_is_y_sort_enabled() -> void:
+	_instance_run_scene()
+	var container := _run.get_node_or_null("EnemyContainer")
+	assert_true(container is Node2D)
+	assert_true((container as Node2D).y_sort_enabled,
+		"EnemyContainer muss y_sort_enabled=true tragen")
+
+
 # ---------------------------------------------------------------------------
 # Player-Setup
 # ---------------------------------------------------------------------------

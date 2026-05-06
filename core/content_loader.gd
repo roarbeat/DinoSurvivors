@@ -43,6 +43,10 @@ const TYPE_CONFIG: Dictionary = {
 		"dir": "sounds",
 		"script_path": "res://core/content/sound_def.gd",
 	},
+	&"map": {
+		"dir": "maps",
+		"script_path": "res://core/content/map_def.gd",
+	},
 }
 
 const CORE_CONTENT_ROOT := "res://content/"

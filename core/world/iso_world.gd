@@ -41,6 +41,9 @@ const TILE_SIZE: Vector2i = Vector2i(64, 32)
 ## stabile Ergebnisse haben.
 @export var deterministic_colors: bool = true
 
+# State (ADR 0036)
+var _map_def: MapDef = null
+
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -69,6 +72,28 @@ static func iso_to_tile(screen: Vector2, tile_size: Vector2i = TILE_SIZE) -> Vec
 	return Vector2i(int(round(tx)), int(round(ty)))
 
 
+## Konfiguriert die IsoWorld aus einer MapDef (ADR 0036).
+## Übernimmt grid_size, path_row, path_col, deterministic_colors und
+## ruft `_build_tiles()` auf, sodass die neue Map sofort sichtbar ist.
+##
+## No-op wenn def null ist.
+func set_map_def(def: MapDef) -> void:
+	if def == null:
+		return
+	_map_def = def
+	grid_size = def.grid_size
+	path_row = def.path_row
+	path_col = def.path_col
+	deterministic_colors = def.deterministic_colors
+	_build_tiles()
+
+
+## Liefert die zuletzt gesetzte MapDef. null wenn `set_map_def`
+## nie gerufen wurde (IsoWorld nutzt dann seine @export-Defaults).
+func get_map_def() -> MapDef:
+	return _map_def
+
+
 ## Bounding-Box des Iso-Grids in Pixel.
 func world_size() -> Vector2:
 	if grid_size.x <= 0 or grid_size.y <= 0:
@@ -79,6 +104,30 @@ func world_size() -> Vector2:
 	var w: float = float(grid_size.x + grid_size.y - 1) * (TILE_SIZE.x * 0.5)
 	var h: float = float(grid_size.x + grid_size.y - 1) * (TILE_SIZE.y * 0.5)
 	return Vector2(w, h)
+
+
+## Bounding-Rect des Iso-Grids in Welt-Koordinaten (ADR 0033).
+##
+## Berücksichtigt die Diamond-Form jedes Tiles: jeder Tile ragt
+## TILE_SIZE/2 in jede Richtung von seinem Pivot. Das Result-Rect
+## umschließt damit die gesamte sichtbare Plattform inklusive der
+## äußeren Diamond-Spitzen.
+##
+## Pure function (deterministisch). Liefert leeres Rect bei grid_size 0.
+func world_bounds() -> Rect2:
+	if grid_size.x <= 0 or grid_size.y <= 0:
+		return Rect2()
+	var hw: float = TILE_SIZE.x * 0.5
+	var hh: float = TILE_SIZE.y * 0.5
+	# Linkester Tile-Pivot ist (0, grid.y-1) → x = -(gy-1) * hw
+	# Rechtester Tile-Pivot ist (gx-1, 0) → x = +(gx-1) * hw
+	# Oberster Tile-Pivot ist (0, 0) → y = 0
+	# Unterster Tile-Pivot ist (gx-1, gy-1) → y = (gx+gy-2) * hh
+	var min_x: float = -float(grid_size.y - 1) * hw - hw
+	var max_x: float =  float(grid_size.x - 1) * hw + hw
+	var min_y: float = -hh
+	var max_y: float =  float(grid_size.x + grid_size.y - 2) * hh + hh
+	return Rect2(Vector2(min_x, min_y), Vector2(max_x - min_x, max_y - min_y))
 
 
 ## true wenn (tile.x, tile.y) auf dem Cross-Pfad liegt (Path-Tile statt Grass).

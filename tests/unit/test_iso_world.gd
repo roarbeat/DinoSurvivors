@@ -168,3 +168,116 @@ func test_world_size_zero_for_empty_grid() -> void:
 	add_child(world)
 	assert_eq(world.world_size(), Vector2.ZERO)
 	world.queue_free()
+
+
+# ---------------------------------------------------------------------------
+# world_bounds (ADR 0033)
+# ---------------------------------------------------------------------------
+
+func test_world_bounds_for_empty_grid_is_zero_rect() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(0, 0)
+	add_child(world)
+	var b := world.world_bounds()
+	assert_eq(b.size, Vector2.ZERO)
+	world.queue_free()
+
+
+func test_world_bounds_for_1x1_grid() -> void:
+	# Ein einzelner Tile bei (0,0): pivot bei (0,0), Diamond ragt
+	# ±32 in X und ±16 in Y.
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(1, 1)
+	add_child(world)
+	var b := world.world_bounds()
+	assert_almost_eq(b.position.x, -32.0, 0.1)
+	assert_almost_eq(b.position.y, -16.0, 0.1)
+	assert_almost_eq(b.size.x, 64.0, 0.1)
+	assert_almost_eq(b.size.y, 32.0, 0.1)
+	world.queue_free()
+
+
+func test_world_bounds_for_8x8_grid() -> void:
+	# 8×8 Grid:
+	# linkester Tile-Pivot: (0, 7) → x = -7*32 = -224, minus 32 (Diamond) = -256
+	# rechtester Tile-Pivot: (7, 0) → x = +7*32 = +224, plus 32 = +256
+	# oberster Tile-Pivot: (0, 0) → y = 0, minus 16 (Diamond) = -16
+	# unterster Tile-Pivot: (7, 7) → y = (7+7)*16 = 224, plus 16 = +240
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(8, 8)
+	add_child(world)
+	var b := world.world_bounds()
+	assert_almost_eq(b.position.x, -256.0, 0.1)
+	assert_almost_eq(b.position.y, -16.0, 0.1)
+	assert_almost_eq(b.size.x, 512.0, 0.1)
+	assert_almost_eq(b.size.y, 256.0, 0.1)
+	world.queue_free()
+
+
+# ---------------------------------------------------------------------------
+# set_map_def (ADR 0036)
+# ---------------------------------------------------------------------------
+
+func test_set_map_def_applies_grid_size() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	add_child(world)
+	var def := MapDef.new()
+	def.id = &"test_map_5x5"
+	def.display_name_key = &"x.y"
+	def.grid_size = Vector2i(5, 5)
+	def.path_row = 2
+	def.path_col = 2
+	def.deterministic_colors = true
+
+	world.set_map_def(def)
+	assert_eq(world.grid_size, Vector2i(5, 5))
+	assert_eq(world.path_row, 2)
+	assert_eq(world.path_col, 2)
+	# 5×5 = 25 Tiles im neuen Grid
+	var tiles_root := world.get_node_or_null("Tiles")
+	assert_eq(tiles_root.get_child_count(), 25)
+	world.queue_free()
+
+
+func test_set_map_def_with_null_is_noop() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	add_child(world)
+	world.grid_size = Vector2i(8, 8)
+	world.set_map_def(null)
+	assert_eq(world.grid_size, Vector2i(8, 8),
+		"null-MapDef darf grid_size nicht ändern")
+	world.queue_free()
+
+
+func test_get_map_def_returns_last_set() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	add_child(world)
+	var def := MapDef.new()
+	def.id = &"test_map_get"
+	def.display_name_key = &"x.y"
+	def.grid_size = Vector2i(3, 3)
+
+	world.set_map_def(def)
+	assert_eq(world.get_map_def(), def)
+	world.queue_free()
+
+
+func test_get_map_def_returns_null_initially() -> void:
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	add_child(world)
+	assert_null(world.get_map_def())
+	world.queue_free()
+
+
+func test_world_bounds_contains_all_tile_pivots() -> void:
+	# Sanity: jeder Tile-Pivot muss innerhalb des bounds-Rect liegen
+	var world: IsoWorld = ISO_WORLD_SCENE.instantiate()
+	world.grid_size = Vector2i(8, 8)
+	add_child(world)
+	var b := world.world_bounds()
+	for x in 8:
+		for y in 8:
+			var p := IsoWorld.tile_to_iso(Vector2i(x, y))
+			assert_true(b.has_point(p),
+				"Tile-Pivot %s muss in bounds-Rect %s liegen" % [p, b])
+	world.queue_free()

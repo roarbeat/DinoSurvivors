@@ -94,6 +94,14 @@ msgstr "T-PRIME: GEREIZT"
 msgid "boss.tyrannosaurus_prime.phase_rage"
 msgstr "T-PRIME: WAHNSINN!"
 
+# --- Maps (ADR 0036) ---
+
+msgid "map.default.name"
+msgstr "Standard-Lichtung"
+
+msgid "map.default.tooltip"
+msgstr "Eine 8×8-Plattform mit Cross-Pfad. Foundation für alle Variants."
+
 # --- Sounds (ADR 0028) ---
 
 msgid "sfx.enemy_died.name"

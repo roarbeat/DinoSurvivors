@@ -94,6 +94,14 @@ msgstr "T-PRIME: ENRAGED"
 msgid "boss.tyrannosaurus_prime.phase_rage"
 msgstr "T-PRIME: FRENZY!"
 
+# --- Maps (ADR 0036) ---
+
+msgid "map.default.name"
+msgstr "Standard Clearing"
+
+msgid "map.default.tooltip"
+msgstr "An 8×8 platform with cross-path. Foundation for all variants."
+
 # --- Sounds (ADR 0028) ---
 
 msgid "sfx.enemy_died.name"

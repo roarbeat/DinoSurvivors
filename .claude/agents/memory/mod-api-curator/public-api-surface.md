@@ -185,6 +185,21 @@ Phase-Resolver-Verhalten:
 - MONOTON: Index steigt nur, kein Rückfall bei Heal
 - Bei Phase-Wechsel feuert `EventBus.boss_phase_changed`
 
+**MapDef extends ContentItem (ADR 0036):**
+```
+grid_size           : Vector2i        # default (8, 8)
+path_row            : int             # -1 = kein horizontaler Pfad
+path_col            : int             # -1 = kein vertikaler Pfad
+deterministic_colors: bool            # true = stable Tile-Color-Variation
+biome_label_key     : StringName      # optionaler i18n-Key für Map-Banner
+```
+
+Validate-Regeln:
+- `grid_size` darf nicht negative Komponenten haben
+
+Modder können MapDefs unter `user://mods/<mod>/content/maps/<id>.tres`
+ablegen — ContentLoader registriert sie analog zu Mutation/Enemy/Wave.
+
 ---
 
 ## 3.5. SfxBus-API (`core/audio/sfx_bus.gd`, ADR 0028)
@@ -245,6 +260,7 @@ static func iso_to_tile(screen: Vector2, tile_size = TILE_SIZE) -> Vector2i
 @export var path_col: int = 4
 
 func world_size() -> Vector2
+func world_bounds() -> Rect2  # ADR 0033 — Plattform-Bounding-Rect
 func is_path_tile(tile: Vector2i) -> bool
 ```
 
@@ -267,6 +283,21 @@ func set_target(t: Node2D) -> void
 func snap_to_target() -> void
 func set_follow_smoothing(value: float) -> void
 func set_bounds(min_pos: Vector2, max_pos: Vector2) -> void
+func attach_to_world(world: IsoWorld) -> void  # ADR 0033 — bounds = world.world_bounds()
+
+# Camera-Shake (ADR 0035)
+func add_trauma(amount: float) -> void
+func set_trauma(value: float) -> void
+@export var max_shake_offset: float = 8.0
+@export var trauma_decay_per_second: float = 1.5
+@export var trauma_on_player_damaged: float = 0.3
+@export var trauma_on_boss_defeated: float = 0.7
+@export var shake_muted: bool = false
+var trauma: float  # 0.0 – 1.0, public-read
+
+# Pure Functions (Test-Hooks)
+static func compute_shake_offset(trauma, max_offset, rng) -> Vector2
+static func compute_trauma_after_decay(trauma, decay_per_s, delta) -> float
 
 # Pure Function (Test-Hook)
 static func compute_next_position(

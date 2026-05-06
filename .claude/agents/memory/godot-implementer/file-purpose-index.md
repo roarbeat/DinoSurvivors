@@ -145,7 +145,8 @@
 | `unit/test_meta_progression.gd` | Currency-API, Boss-Reward, Save/Load-Roundtrip, Legacy-Backward-Kompat, 19 Tests (ADR 0030) |
 | `unit/test_palette.gd` | Color-Konstanten, random_grass-Determinismus, 9 Tests (ADR 0031) |
 | `unit/test_iso_world.gd` | Iso-Math (Pure), Tile-Generation, Path-Logik, world_size, 14 Tests (ADR 0031) |
-| `unit/test_run_camera.gd` | Smooth-Lerp (Pure), Snap, Bounds, Crash-Protection, 19 Tests (ADR 0032) |
+| `unit/test_run_camera.gd` | Smooth-Lerp (Pure), Snap, Bounds, Crash-Protection, Trauma-System, 32 Tests (ADR 0032/0033/0035) |
+| `unit/test_map_def.gd` | MapDef-Discovery, Validate-Regeln, 7 Tests (ADR 0036) |
 | `fixtures/visual_stub.tscn` | Test-Helper-Scene für Visual-Provider-Tests |
 | `unit/test_save_system.gd` | Roundtrip, set_field, EventBus-Hook, Migration-Runner |
 | `unit/test_mod_loader.gd` | Manifest-Parse, Discovery, Failure-Modi, EventBus-Signals |

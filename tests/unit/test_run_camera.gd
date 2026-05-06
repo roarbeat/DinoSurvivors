@@ -211,6 +211,178 @@ func test_default_zoom_is_2x() -> void:
 # Crash-Protection: Camera mit freigegebenem Target
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# attach_to_world (ADR 0033)
+# ---------------------------------------------------------------------------
+
+const ISO_WORLD_SCENE_FOR_CAMERA: PackedScene = preload("res://core/world/iso_world.tscn")
+
+
+func test_attach_to_world_sets_bounds_from_iso_world() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	var world: IsoWorld = ISO_WORLD_SCENE_FOR_CAMERA.instantiate()
+	world.grid_size = Vector2i(8, 8)
+	add_child(world)
+
+	cam.attach_to_world(world)
+	# 8×8 Grid → bounds (-256, -16) bis (256, 240)
+	assert_true(cam.enable_limits)
+	assert_almost_eq(cam.bound_min.x, -256.0, 0.1)
+	assert_almost_eq(cam.bound_min.y, -16.0, 0.1)
+	assert_almost_eq(cam.bound_max.x, 256.0, 0.1)
+	assert_almost_eq(cam.bound_max.y, 240.0, 0.1)
+
+	cam.queue_free()
+	world.queue_free()
+
+
+func test_attach_to_world_with_null_is_noop() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	cam.enable_limits = false
+	cam.attach_to_world(null)
+	assert_false(cam.enable_limits, "null-world soll bounds nicht verändern")
+	cam.queue_free()
+
+
+func test_attach_to_world_with_empty_grid_is_noop() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	cam.enable_limits = false
+	var world: IsoWorld = ISO_WORLD_SCENE_FOR_CAMERA.instantiate()
+	world.grid_size = Vector2i(0, 0)
+	add_child(world)
+
+	cam.attach_to_world(world)
+	assert_false(cam.enable_limits,
+		"Leeres Grid → keine Bounds gesetzt")
+
+	cam.queue_free()
+	world.queue_free()
+
+
+# ---------------------------------------------------------------------------
+# Camera-Shake (ADR 0035)
+# ---------------------------------------------------------------------------
+
+func test_default_trauma_is_zero() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	assert_eq(cam.trauma, 0.0)
+	cam.queue_free()
+
+
+func test_add_trauma_increases_trauma() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	cam.add_trauma(0.5)
+	assert_almost_eq(cam.trauma, 0.5, 0.001)
+	cam.queue_free()
+
+
+func test_add_trauma_clamps_at_one() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	cam.add_trauma(0.6)
+	cam.add_trauma(0.6)
+	assert_almost_eq(cam.trauma, 1.0, 0.001,
+		"Trauma muss bei 1.0 clamped sein")
+	cam.queue_free()
+
+
+func test_add_trauma_when_muted_is_noop() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	cam.shake_muted = true
+	cam.add_trauma(0.5)
+	assert_eq(cam.trauma, 0.0)
+	cam.queue_free()
+
+
+func test_compute_trauma_after_decay_reduces() -> void:
+	# trauma=1.0, decay=2.0/s, delta=0.5 → 1.0 - 2.0*0.5 = 0.0
+	var t := RunCamera.compute_trauma_after_decay(1.0, 2.0, 0.5)
+	assert_almost_eq(t, 0.0, 0.001)
+
+
+func test_compute_trauma_after_decay_clamps_at_zero() -> void:
+	# Mit großem delta soll Trauma nicht negativ werden
+	var t := RunCamera.compute_trauma_after_decay(0.3, 2.0, 1.0)
+	assert_eq(t, 0.0)
+
+
+func test_compute_trauma_after_decay_no_time() -> void:
+	# delta=0 → kein Decay
+	var t := RunCamera.compute_trauma_after_decay(0.5, 1.5, 0.0)
+	assert_almost_eq(t, 0.5, 0.001)
+
+
+# ---------------------------------------------------------------------------
+# Shake-Offset
+# ---------------------------------------------------------------------------
+
+func test_shake_offset_zero_for_zero_trauma() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	var off := RunCamera.compute_shake_offset(0.0, 8.0, rng)
+	assert_eq(off, Vector2.ZERO)
+
+
+func test_shake_offset_within_max_for_full_trauma() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	var off := RunCamera.compute_shake_offset(1.0, 8.0, rng)
+	# Trauma² × max_offset = 1.0 × 8.0 = 8.0 als max betrag pro Achse
+	assert_lte(absf(off.x), 8.0, "Shake-X muss in [-max, max] liegen")
+	assert_lte(absf(off.y), 8.0)
+
+
+func test_shake_offset_smaller_for_low_trauma() -> void:
+	# trauma=0.3 → trauma²=0.09 → max betrag = 8.0 × 0.09 = 0.72
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	var off := RunCamera.compute_shake_offset(0.3, 8.0, rng)
+	assert_lte(absf(off.x), 0.73)
+
+
+func test_shake_offset_deterministic_with_seeded_rng() -> void:
+	# Gleicher RNG-Seed → gleicher Offset
+	var rng_a := RandomNumberGenerator.new()
+	rng_a.seed = 100
+	var rng_b := RandomNumberGenerator.new()
+	rng_b.seed = 100
+	var off_a := RunCamera.compute_shake_offset(0.7, 8.0, rng_a)
+	var off_b := RunCamera.compute_shake_offset(0.7, 8.0, rng_b)
+	assert_eq(off_a, off_b)
+
+
+# ---------------------------------------------------------------------------
+# EventBus-Hooks
+# ---------------------------------------------------------------------------
+
+func test_player_damaged_signal_adds_trauma() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	# Default trauma_on_player_damaged = 0.3
+	EventBus.player_damaged.emit(10.0, &"raptor_grunt")
+	assert_almost_eq(cam.trauma, 0.3, 0.001)
+	cam.queue_free()
+
+
+func test_boss_defeated_signal_adds_trauma() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	# Default trauma_on_boss_defeated = 0.7
+	EventBus.boss_defeated.emit(&"tyrannosaurus_prime", 60.0)
+	assert_almost_eq(cam.trauma, 0.7, 0.001)
+	cam.queue_free()
+
+
+# ---------------------------------------------------------------------------
+# Crash-Protection
+# ---------------------------------------------------------------------------
+
 func test_camera_does_not_crash_when_target_freed() -> void:
 	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
 	add_child(cam)

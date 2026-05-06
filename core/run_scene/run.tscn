@@ -15,9 +15,11 @@ z_index = -10
 
 [node name="IsoWorld" parent="WorldLayer" instance=ExtResource("5_world")]
 
-[node name="PlayerSlot" type="Node" parent="."]
+[node name="PlayerSlot" type="Node2D" parent="."]
+y_sort_enabled = true
 
-[node name="EnemyContainer" type="Node" parent="."]
+[node name="EnemyContainer" type="Node2D" parent="."]
+y_sort_enabled = true
 
 [node name="RunCamera" parent="." instance=ExtResource("6_camera")]
 

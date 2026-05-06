@@ -22,6 +22,9 @@ extends Node2D
 @export var demo_enemy_id: StringName = &"raptor_grunt"
 @export var demo_enemy_count: int = 3
 
+## Welche Map wird geladen? Default = `&"default"` (ADR 0036).
+@export var map_id: StringName = &"default"
+
 
 # ---------------------------------------------------------------------------
 # Children
@@ -31,6 +34,7 @@ extends Node2D
 @onready var enemy_container: Node = $EnemyContainer
 @onready var game_over_layer: GameOverOverlay = $GameOverLayer
 @onready var run_camera: RunCamera = $RunCamera
+@onready var iso_world: IsoWorld = $WorldLayer/IsoWorld
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +74,17 @@ func _ready() -> void:
 	player_slot.add_child(_player)
 	_player.set_dino(def)
 
-	# 2b. Camera auf Player zentrieren (ADR 0032)
+	# 2a. MapDef laden + auf IsoWorld anwenden (ADR 0036)
+	if iso_world != null and get_node_or_null("/root/ContentLoader") != null:
+		var map_def: MapDef = ContentLoader.get_or_null(&"map", map_id) as MapDef
+		if map_def != null:
+			iso_world.set_map_def(map_def)
+
+	# 2b. Camera auf Player zentrieren (ADR 0032) + Bounds aus IsoWorld (ADR 0033)
 	if run_camera != null:
 		run_camera.set_target(_player)
+		if iso_world != null:
+			run_camera.attach_to_world(iso_world)
 		run_camera.snap_to_target()
 
 	# 3. WaveSpawner spawn_root setzen
