@@ -46,6 +46,13 @@ Format: `<type>:<id>` — kurze Notiz — Erstellungsdatum
 - `sound:sfx_mutation_picked` — Mutation-Confirm-Sting, vol=+1dB — Stub — 2026-05-06
 - `sound:sfx_wave_started` — Wave-Incoming-Build-up, vol=-2dB — Stub — 2026-05-06
 
+## upgrade (ADR 0040)
+
+- `upgrade:stronger_jaws` — +5/10/15% Damage, Cost 50/100/200 amber, max_level=3 — 2026-05-06
+- `upgrade:tougher_hide` — +10/20/30% max HP, Cost 50/100/200, max_level=3 — 2026-05-06
+- `upgrade:faster_legs` — +10/20/30% Speed, Cost 40/80/160, max_level=3 — 2026-05-06
+- `upgrade:sharper_eyes` — +20/40% Pickup-Radius, Cost 80/200, max_level=2 — 2026-05-06
+
 ## Reservierte Präfixe
 
 - `core_` darf nur Core-Content nutzen (Mod-Loader rejectet Mod-IDs mit

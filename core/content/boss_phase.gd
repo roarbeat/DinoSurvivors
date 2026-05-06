@@ -29,6 +29,10 @@ extends Resource
 ## Leer = kein Banner-UI.
 @export var label_key: StringName = &""
 
+## Abilities, die in dieser Phase periodisch ausgelöst werden (ADR 0038).
+## Leer = keine aktiven Abilities (nur Speed/Damage-Multiplikatoren).
+@export var abilities: Array[BossAbility] = []
+
 
 func validate() -> String:
 	if hp_threshold < 0.0 or hp_threshold > 1.0:

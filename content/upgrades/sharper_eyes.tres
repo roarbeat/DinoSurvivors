@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=2 format=3 uid="uid://dino_upgrade_sharper_eyes"]
+
+[ext_resource type="Script" path="res://core/content/upgrade_def.gd" id="1_upgradedef"]
+
+[resource]
+script = ExtResource("1_upgradedef")
+id = &"sharper_eyes"
+display_name_key = &"upgrade.sharper_eyes.name"
+description_key = &"upgrade.sharper_eyes.tooltip"
+source_mod_id = &""
+override_existing = false
+max_level = 2
+cost_per_level = [80, 200]
+stat_modifiers_per_level = [{
+	&"pickup_radius_pct": 0.20
+}, {
+	&"pickup_radius_pct": 0.40
+}]
+cost_currency = &"amber"

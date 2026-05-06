@@ -1366,6 +1366,34 @@ strikt am Plattform-Rand wie ADR 0033.
 `MapDef.camera_padding` ist die data-driven Source-of-Truth — RunScene
 liest das beim attach. Modder können pro Map eigenes Padding wählen.
 
+**Custom-Shake-Profiles (ADR 0039)**
+
+```gdscript
+class ShakeProfile extends Resource:
+    @export var trauma_amount: float = 0.3
+    @export var decay_per_second: float = 0.0  # 0 = Camera-Default
+    @export var max_offset: float = 0.0          # 0 = Camera-Default
+```
+
+```gdscript
+RunCamera.add_trauma_from_profile(profile: ShakeProfile)
+RunCamera.register_signal_profile(signal_name, profile)  # für Mods
+RunCamera.register_ability_profile(ability_id, profile)  # boss_ability_used
+```
+
+Default-Profiles in `core/world/profiles/`:
+- `profile_player_damaged.tres` (0.3 trauma)
+- `profile_boss_defeated.tres`  (0.7 trauma)
+- `profile_boss_stomp.tres`     (0.5 trauma)
+
+`EventBus.boss_ability_used` löst pro Ability-ID ein Profile aus —
+Default nur für `tyrannosaurus_stomp`. Modder können via
+`register_ability_profile` eigene Mappings ergänzen.
+
+Hardcoded `trauma_on_player_damaged`-Properties bleiben als Fallback —
+wenn ein Signal kein Profile-Mapping hat, fällt RunCamera auf den
+Standardwert zurück (Backward-Kompat ADR 0035).
+
 **Camera-Shake (ADR 0035, Trauma-System)**
 
 ```gdscript
@@ -1462,6 +1490,89 @@ Sobald echte Sprites landen, werden sie in `*.tres`-Files via
 - Procedural-Tile-Placement
 - MapDef als Content-Resource (Map-Layouts data-driven definierbar)
 
+## Pattern: Meta-Shop + UpgradeDef (ADR 0040)
+
+`UpgradeDef` ist ein Content-Resource, das permanente Meta-Upgrades
+definiert (Damage, HP, Speed, Pickup-Radius). Im Shop-Overlay kaufbar
+mit Bernstein-Currency, persistent über Save-System.
+
+**Schema**
+
+```gdscript
+class UpgradeDef extends ContentItem:
+    @export var max_level: int = 1
+    @export var cost_per_level: Array[int] = [50]
+    @export var stat_modifiers_per_level: Array[Dictionary] = [{}]
+    @export var cost_currency: StringName = &"amber"
+```
+
+`stat_modifiers_per_level` nutzt das gleiche Schema wie
+`MutationDef.stat_modifiers` — `MutationModifierBridge.build()` wandelt
+sie in Modifier-Resourcen um (gleiche Pipeline).
+
+**MetaProgression-API**
+
+```gdscript
+MetaProgression.get_upgrade_level(id) -> int
+MetaProgression.get_upgrade_cost(id) -> int   # Cost für nächsten Level
+MetaProgression.can_afford_upgrade(id) -> bool
+MetaProgression.purchase_upgrade(id) -> bool
+MetaProgression.list_upgrade_levels() -> Dictionary
+MetaProgression.get_aggregated_modifiers() -> Dictionary  # für Player-Stats
+```
+
+**EventBus**
+
+```gdscript
+signal upgrade_purchased(upgrade_id: StringName, new_level: int)
+```
+
+**PlayerCharacter-Integration**
+
+`PlayerCharacter.get_aggregated_or_empty()` mergt
+`PlayerMutations.get_aggregated()` mit
+`MetaProgression.get_aggregated_modifiers()`. Beide Quellen wirken
+additiv auf den Player-Modifier-Stack.
+
+`EventBus.upgrade_purchased` triggert `_apply_stats` neu — Player sieht
+Upgrade sofort wirksam.
+
+**Shop-Overlay**
+
+`core/ui/shop_overlay.gd` (CanvasLayer auf layer=90, zwischen
+MutationPickLayer und GameOverLayer). Listet alle Upgrades aus
+ContentLoader, zeigt Cost + aktuelles Level + Buy-Button.
+
+**Save-Schema (v1.2, additive)**
+
+```json
+"data": {
+  "meta_progression": {"amber": 250},
+  "upgrade_levels": {
+    "stronger_jaws": 2,
+    "faster_legs": 1
+  }
+}
+```
+
+Saves vor v0.2.0 ohne `upgrade_levels`-Slot werden korrekt geladen
+(Default `{}`). **Keine Migration-File nötig.**
+
+**Loop ist geschlossen**
+
+```
+Run → Bernstein verdienen → Run-Ende → SHOP →
+Upgrade kaufen → Nächster Run mit permanentem Buff
+```
+
+**Nicht in v1**
+
+- Multi-Tab-Shop (Stat / Dino / Cosmetic)
+- Upgrade-Dependency-Tree
+- Refund-Mechanik
+- Multiple Currency-Typen
+- Pause-Menü mit Shop-Zugang
+
 ## Pattern: Persistente Meta-Progression (ADR 0030)
 
 `MetaProgression` ist ein Autoload-Tracker für Run-übergreifende
@@ -1519,6 +1630,74 @@ Boss-Defeat, Quit). Atomic-Write durch SaveSystem.
 - Multiple Currency-Typen (Schema unterstützt es, Game füllt nur amber)
 - Currency-Pickups als World-Items (Coin-Sprites einsammeln)
 - Currency-Drops von Enemies (nicht nur Bossen)
+
+## Pattern: Boss-Abilities (ADR 0038)
+
+Pro `BossPhase` kann ein Array von `BossAbility`-Resources hinterlegt
+werden. BossMob tickt diese periodisch — jede Ability hat einen
+eigenen Cooldown.
+
+**BossAbility-Schema**
+
+```gdscript
+class BossAbility extends Resource:
+    @export var id: StringName
+    @export var cooldown: float = 5.0
+    @export var initial_delay: float = 1.0
+
+    func trigger(_boss: Node) -> void:
+        pass  # virtual — Subclass überschreibt
+```
+
+**Erste konkrete Subklasse: BossStomp**
+
+AOE-Damage in einem Radius um den Boss. Pure-Function-Helper
+`find_player_health_in_radius(center, radius, players)` ist headless-
+testbar.
+
+**BossMob-Tick**
+
+```gdscript
+func _physics_process(delta):
+    if health.is_dead(): return
+    _move_toward_player(delta)
+    _tick_abilities(delta)
+
+func _tick_abilities(delta):
+    var phase := _def.phases[_current_phase_idx]
+    for ability in phase.abilities:
+        var cd := _ability_cooldowns.get(ability.id, ability.initial_delay)
+        cd -= delta
+        if cd <= 0.0:
+            ability.trigger(self)
+            cd = ability.cooldown
+        _ability_cooldowns[ability.id] = cd
+```
+
+**Phase-Wechsel-Reset**
+
+Beim Phasen-Wechsel werden `_ability_cooldowns` gelöscht. Neue Phase
+startet mit `initial_delay` pro Ability.
+
+**EventBus**
+
+```gdscript
+signal boss_ability_used(boss_id, ability_id, position)
+```
+
+UI/SFX/VFX-Hooks subscriben hier (z.B. Telegraph-Anim am Stomp-Center,
+SFX, Camera-Shake-Trigger).
+
+**tyrannosaurus_prime — Stomp**
+
+Rage-Phase (HP <= 33%) bekommt `tyrannosaurus_stomp`:
+cooldown=4s, initial_delay=1.5s, radius=140px, damage=25.
+
+**Nicht in v1**
+
+- Telegraph-VFX (Vorwarn-Indikator)
+- BossRoar/BossCharge/BossSpawnAdds
+- Conditional-Abilities
 
 ## Pattern: Boss-Phasen (ADR 0029)
 

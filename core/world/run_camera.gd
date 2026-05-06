@@ -70,6 +70,23 @@ var trauma: float = 0.0
 
 var _shake_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
+# ---------------------------------------------------------------------------
+# Custom-Shake-Profiles (ADR 0039)
+# ---------------------------------------------------------------------------
+
+const PROFILE_PLAYER_DAMAGED: ShakeProfile = preload("res://core/world/profiles/profile_player_damaged.tres")
+const PROFILE_BOSS_DEFEATED:  ShakeProfile = preload("res://core/world/profiles/profile_boss_defeated.tres")
+const PROFILE_BOSS_STOMP:     ShakeProfile = preload("res://core/world/profiles/profile_boss_stomp.tres")
+
+## Per-Signal-Profile-Mapping. Wird im _ready() mit den Default-Profiles
+## befüllt. Modder können via register_signal_profile eigene Mappings
+## ergänzen.
+var _signal_profiles: Dictionary = {}
+
+## Per-Ability-Profile-Mapping (boss_ability_used liefert ability_id
+## als Param). Default: tyrannosaurus_stomp → PROFILE_BOSS_STOMP.
+var _ability_profiles: Dictionary = {}
+
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -87,10 +104,16 @@ func _ready() -> void:
 	# _shake_rng.seed = N setzen).
 	_shake_rng.randomize()
 
-	# EventBus-Hooks für Camera-Shake (ADR 0035)
+	# Default-Profile-Mappings (ADR 0039)
+	_signal_profiles[&"player_damaged"] = PROFILE_PLAYER_DAMAGED
+	_signal_profiles[&"boss_defeated"] = PROFILE_BOSS_DEFEATED
+	_ability_profiles[&"tyrannosaurus_stomp"] = PROFILE_BOSS_STOMP
+
+	# EventBus-Hooks für Camera-Shake (ADR 0035 + 0038/0039)
 	if get_node_or_null("/root/EventBus") != null:
 		EventBus.player_damaged.connect(_on_player_damaged)
 		EventBus.boss_defeated.connect(_on_boss_defeated)
+		EventBus.boss_ability_used.connect(_on_boss_ability_used)
 
 	make_current()
 
@@ -250,13 +273,58 @@ static func compute_trauma_after_decay(
 	return max(0.0, current_trauma - decay_per_second * delta)
 
 
+## Erhöht Trauma basierend auf einem ShakeProfile (ADR 0039).
+## No-op wenn profile null oder shake_muted=true.
+func add_trauma_from_profile(profile: ShakeProfile) -> void:
+	if profile == null or shake_muted:
+		return
+	trauma = clampf(trauma + profile.trauma_amount, 0.0, 1.0)
+
+
+## Registriert ein Profile für ein EventBus-Signal. Mods können hier
+## eigene Mappings ergänzen oder Defaults überschreiben.
+func register_signal_profile(signal_name: StringName, profile: ShakeProfile) -> void:
+	_signal_profiles[signal_name] = profile
+
+
+## Liefert das Profile für ein Signal — null wenn kein Mapping existiert.
+func get_signal_profile(signal_name: StringName) -> ShakeProfile:
+	return _signal_profiles.get(signal_name, null)
+
+
+## Registriert ein Profile für eine BossAbility (matched via ability_id).
+func register_ability_profile(ability_id: StringName, profile: ShakeProfile) -> void:
+	_ability_profiles[ability_id] = profile
+
+
+func get_ability_profile(ability_id: StringName) -> ShakeProfile:
+	return _ability_profiles.get(ability_id, null)
+
+
 ## EventBus-Handler — wird in _ready() verbunden.
+## Bevorzugt Profile-Mapping, fällt auf hardcoded trauma_on_*-Properties
+## zurück (Backward-Kompat mit ADR 0035).
 func _on_player_damaged(_amount: float, _source_id: StringName) -> void:
-	add_trauma(trauma_on_player_damaged)
+	var profile: ShakeProfile = _signal_profiles.get(&"player_damaged", null)
+	if profile != null:
+		add_trauma_from_profile(profile)
+	else:
+		add_trauma(trauma_on_player_damaged)
 
 
 func _on_boss_defeated(_boss_id: StringName, _run_time: float) -> void:
-	add_trauma(trauma_on_boss_defeated)
+	var profile: ShakeProfile = _signal_profiles.get(&"boss_defeated", null)
+	if profile != null:
+		add_trauma_from_profile(profile)
+	else:
+		add_trauma(trauma_on_boss_defeated)
+
+
+func _on_boss_ability_used(_boss_id: StringName, ability_id: StringName, _position: Vector2) -> void:
+	# Pro-Ability-Mapping (z.B. tyrannosaurus_stomp → PROFILE_BOSS_STOMP)
+	var profile: ShakeProfile = _ability_profiles.get(ability_id, null)
+	if profile != null:
+		add_trauma_from_profile(profile)
 
 
 ## Berechnet die nächste Camera-Position basierend auf Smooth-Lerp.

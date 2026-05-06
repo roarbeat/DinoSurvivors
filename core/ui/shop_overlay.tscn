@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://dino_ui_shop_overlay"]
+
+[ext_resource type="Script" path="res://core/ui/shop_overlay.gd" id="1_shop"]
+
+[node name="ShopOverlay" type="CanvasLayer"]
+script = ExtResource("1_shop")
+layer = 90
+auto_show_on_run_end = false

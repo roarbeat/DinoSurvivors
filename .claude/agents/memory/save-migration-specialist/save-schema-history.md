@@ -92,4 +92,34 @@ bestehenden Code.
 
 ---
 
+## v1.2 (additive, 2026-05-06, ADR 0040 Meta-Shop)
+
+**Kein Schema-Bruch, kein Migration-File nötig.**
+
+Save bekommt einen optionalen `data.upgrade_levels`-Slot, in dem
+MetaProgression die gekauften Meta-Upgrades persistiert:
+
+```jsonc
+{
+  "schema_version": 1,
+  "data": {
+    "meta_progression": {"amber": 250},
+    "upgrade_levels": {
+      "stronger_jaws": 2,
+      "tougher_hide": 1
+    }
+  }
+}
+```
+
+Saves vor v0.2.0 (ohne `upgrade_levels`) werden korrekt geladen —
+`MetaProgression._on_save_loaded` fällt auf `{}` zurück.
+
+**Schreibe-Pfad:** identisch zu v1.1 — bei `EventBus.save_requested`
+schreibt MetaProgression beide Slots (`meta_progression` und
+`upgrade_levels`) in `SaveSystem.set_field`. SaveSystem persistiert
+dann atomar.
+
+---
+
 ## (Künftige Versionen werden hier ergänzt)

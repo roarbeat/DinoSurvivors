@@ -1,8 +1,17 @@
-[gd_resource type="Resource" script_class="BossDef" load_steps=6 format=3 uid="uid://dino_boss_tyrannosaurus_prime"]
+[gd_resource type="Resource" script_class="BossDef" load_steps=8 format=3 uid="uid://dino_boss_tyrannosaurus_prime"]
 
 [ext_resource type="Script" path="res://core/content/boss_def.gd" id="1_bossdef"]
 [ext_resource type="PackedScene" uid="uid://dino_boss_mob" path="res://core/boss/boss_mob.tscn" id="2_scene"]
 [ext_resource type="Script" path="res://core/content/boss_phase.gd" id="3_phase"]
+[ext_resource type="Script" path="res://core/content/abilities/boss_stomp.gd" id="4_stomp"]
+
+[sub_resource type="Resource" id="ability_stomp_rage"]
+script = ExtResource("4_stomp")
+id = &"tyrannosaurus_stomp"
+cooldown = 4.0
+initial_delay = 1.5
+radius = 140.0
+damage = 25.0
 
 [sub_resource type="Resource" id="phase_spawn"]
 script = ExtResource("3_phase")
@@ -11,6 +20,7 @@ speed_multiplier = 1.0
 damage_multiplier = 1.0
 color_tint = Color(1, 1, 1, 1)
 label_key = &""
+abilities = []
 
 [sub_resource type="Resource" id="phase_mid"]
 script = ExtResource("3_phase")
@@ -19,6 +29,7 @@ speed_multiplier = 1.2
 damage_multiplier = 1.15
 color_tint = Color(1, 0.85, 0.85, 1)
 label_key = &"boss.tyrannosaurus_prime.phase_mid"
+abilities = []
 
 [sub_resource type="Resource" id="phase_rage"]
 script = ExtResource("3_phase")
@@ -27,6 +38,7 @@ speed_multiplier = 1.5
 damage_multiplier = 1.4
 color_tint = Color(1, 0.6, 0.6, 1)
 label_key = &"boss.tyrannosaurus_prime.phase_rage"
+abilities = [SubResource("ability_stomp_rage")]
 
 [resource]
 script = ExtResource("1_bossdef")

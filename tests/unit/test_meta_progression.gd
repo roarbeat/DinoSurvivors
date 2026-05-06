@@ -178,6 +178,138 @@ func test_load_restores_currency() -> void:
 # Integration: Save-Schema-Backward-Kompat
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Upgrade-API (ADR 0040)
+# ---------------------------------------------------------------------------
+
+func test_default_upgrade_levels_are_zero() -> void:
+	assert_eq(MetaProgression.get_upgrade_level(&"stronger_jaws"), 0)
+	assert_eq(MetaProgression.get_upgrade_level(&"unknown_id"), 0)
+
+
+func test_get_upgrade_cost_for_unknown_id_is_neg1() -> void:
+	assert_eq(MetaProgression.get_upgrade_cost(&"does_not_exist"), -1)
+
+
+func test_get_upgrade_cost_at_level_zero() -> void:
+	# stronger_jaws cost_per_level = [50, 100, 200]
+	assert_eq(MetaProgression.get_upgrade_cost(&"stronger_jaws"), 50)
+
+
+func test_can_afford_upgrade_false_when_no_currency() -> void:
+	# Reset → 0 amber
+	MetaProgression.reset()
+	assert_false(MetaProgression.can_afford_upgrade(&"stronger_jaws"))
+
+
+func test_can_afford_upgrade_true_when_currency_sufficient() -> void:
+	MetaProgression.add_currency(&"amber", 100)
+	assert_true(MetaProgression.can_afford_upgrade(&"stronger_jaws"))
+
+
+func test_purchase_upgrade_succeeds_and_subtracts_currency() -> void:
+	MetaProgression.add_currency(&"amber", 100)
+	var ok := MetaProgression.purchase_upgrade(&"stronger_jaws")
+	assert_true(ok)
+	assert_eq(MetaProgression.get_upgrade_level(&"stronger_jaws"), 1)
+	# 100 - 50 = 50
+	assert_eq(MetaProgression.get_currency(&"amber"), 50)
+
+
+func test_purchase_upgrade_fails_when_no_currency() -> void:
+	# Reset → 0 amber, dann purchase versuchen
+	MetaProgression.reset()
+	var ok := MetaProgression.purchase_upgrade(&"stronger_jaws")
+	assert_false(ok)
+	assert_eq(MetaProgression.get_upgrade_level(&"stronger_jaws"), 0)
+
+
+func test_purchase_upgrade_fails_at_max_level() -> void:
+	# Drei Käufe für stronger_jaws (max_level=3, cost 50+100+200=350)
+	MetaProgression.add_currency(&"amber", 1000)
+	for i in 3:
+		MetaProgression.purchase_upgrade(&"stronger_jaws")
+	assert_eq(MetaProgression.get_upgrade_level(&"stronger_jaws"), 3)
+	# 4. Kauf soll scheitern
+	var ok := MetaProgression.purchase_upgrade(&"stronger_jaws")
+	assert_false(ok)
+
+
+func test_purchase_upgrade_emits_signal() -> void:
+	MetaProgression.add_currency(&"amber", 100)
+	watch_signals(EventBus)
+	MetaProgression.purchase_upgrade(&"stronger_jaws")
+	assert_signal_emitted(EventBus, "upgrade_purchased")
+	var params: Array = get_signal_parameters(EventBus, "upgrade_purchased")
+	assert_eq(params[0], &"stronger_jaws")
+	assert_eq(params[1], 1)
+
+
+func test_purchase_upgrade_unknown_id_returns_false() -> void:
+	MetaProgression.add_currency(&"amber", 1000)
+	var ok := MetaProgression.purchase_upgrade(&"unknown_upgrade_id")
+	assert_false(ok)
+
+
+# ---------------------------------------------------------------------------
+# get_aggregated_modifiers
+# ---------------------------------------------------------------------------
+
+func test_aggregated_modifiers_empty_at_start() -> void:
+	MetaProgression.reset()
+	var agg := MetaProgression.get_aggregated_modifiers()
+	assert_eq(agg["outgoing"].size(), 0)
+	assert_eq(agg["incoming"].size(), 0)
+	assert_eq(agg["unhandled"].size(), 0)
+
+
+func test_aggregated_modifiers_after_purchase() -> void:
+	MetaProgression.reset()
+	MetaProgression.add_currency(&"amber", 100)
+	MetaProgression.purchase_upgrade(&"stronger_jaws")
+	var agg := MetaProgression.get_aggregated_modifiers()
+	# stronger_jaws Level 1 → damage_pct=0.05 → MultiplierModifier oder unhandled
+	# Je nach Bridge-Implementation. Wir prüfen Outgoing-Liste oder unhandled.
+	var has_modifier: bool = (
+		agg["outgoing"].size() > 0
+		or agg["incoming"].size() > 0
+		or agg["unhandled"].size() > 0
+	)
+	assert_true(has_modifier,
+		"Nach Purchase sollte aggregated_modifiers nicht leer sein")
+
+
+# ---------------------------------------------------------------------------
+# Save/Load Upgrade-Roundtrip
+# ---------------------------------------------------------------------------
+
+func test_save_persists_upgrade_levels() -> void:
+	MetaProgression.add_currency(&"amber", 1000)
+	MetaProgression.purchase_upgrade(&"stronger_jaws")
+	MetaProgression.purchase_upgrade(&"tougher_hide")
+	EventBus.save_requested.emit(&"test")
+	var data := SaveSystem.get_data()
+	var ul = data.get("upgrade_levels", null)
+	assert_not_null(ul)
+	assert_eq(int((ul as Dictionary).get("stronger_jaws", 0)), 1)
+	assert_eq(int((ul as Dictionary).get("tougher_hide", 0)), 1)
+
+
+func test_load_restores_upgrade_levels() -> void:
+	MetaProgression.add_currency(&"amber", 1000)
+	MetaProgression.purchase_upgrade(&"faster_legs")
+	EventBus.save_requested.emit(&"test")
+	SaveSystem.save(&"test")
+
+	# Reset in-memory
+	MetaProgression.reset()
+	assert_eq(MetaProgression.get_upgrade_level(&"faster_legs"), 0)
+
+	# Reload
+	SaveSystem.load_save()
+	assert_eq(MetaProgression.get_upgrade_level(&"faster_legs"), 1)
+
+
 func test_legacy_save_without_meta_starts_with_zero() -> void:
 	# Save-Datei manuell ohne meta_progression-Slot bauen — simuliert
 	# v0.0.x-Save vor ADR 0030

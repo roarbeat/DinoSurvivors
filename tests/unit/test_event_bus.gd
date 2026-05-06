@@ -17,6 +17,8 @@ const EXPECTED_SIGNALS: Array[String] = [
 	"boss_spawned",
 	"boss_defeated",
 	"boss_phase_changed",
+	"boss_ability_used",
+	"upgrade_purchased",
 	"mutation_offered",
 	"mutation_picked",
 	"xp_gained",

@@ -49,6 +49,14 @@ signal boss_defeated(boss_id: StringName, run_time: float)
 ## `label_key` ist optionaler i18n-Key für Banner-UI.
 signal boss_phase_changed(boss_id: StringName, phase_index: int, label_key: StringName)
 
+## Boss hat eine Ability ausgelöst (ADR 0038). UI/SFX/VFX-Hooks
+## subscriben hier (z.B. Telegraph-Anim am Stomp-Center).
+signal boss_ability_used(boss_id: StringName, ability_id: StringName, position: Vector2)
+
+## Meta-Upgrade wurde gekauft (ADR 0040). UI updated, Player-Stats
+## neu berechnet (über mutations_changed-Pattern).
+signal upgrade_purchased(upgrade_id: StringName, new_level: int)
+
 
 # ---------------------------------------------------------------------------
 # --- Run-Lifecycle ---

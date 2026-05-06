@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://dino_run_scene"]
+[gd_scene load_steps=8 format=3 uid="uid://dino_run_scene"]
 
 [ext_resource type="Script" path="res://core/run_scene/run.gd" id="1_run"]
 [ext_resource type="PackedScene" uid="uid://dino_ui_game_over" path="res://core/ui/game_over.tscn" id="2_gameover"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://dino_ui_mutation_pick" path="res://core/ui/mutation_pick_overlay.tscn" id="4_pick"]
 [ext_resource type="PackedScene" uid="uid://dino_iso_world" path="res://core/world/iso_world.tscn" id="5_world"]
 [ext_resource type="PackedScene" uid="uid://dino_run_camera" path="res://core/world/run_camera.tscn" id="6_camera"]
+[ext_resource type="PackedScene" uid="uid://dino_ui_shop_overlay" path="res://core/ui/shop_overlay.tscn" id="7_shop"]
 
 [node name="Run" type="Node2D"]
 script = ExtResource("1_run")
@@ -26,5 +27,7 @@ y_sort_enabled = true
 [node name="HUDLayer" parent="." instance=ExtResource("3_hud")]
 
 [node name="MutationPickLayer" parent="." instance=ExtResource("4_pick")]
+
+[node name="ShopLayer" parent="." instance=ExtResource("7_shop")]
 
 [node name="GameOverLayer" parent="." instance=ExtResource("2_gameover")]

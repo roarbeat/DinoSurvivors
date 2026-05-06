@@ -6,6 +6,169 @@ angelehnt; SemVer ab 1.0.0.
 
 ## [Unreleased]
 
+(noch keine Änderungen seit 0.2.0)
+
+---
+
+## [0.2.0] - 2026-05-06
+
+> **Phase 5 — Loop geschlossen.** Bernstein hat jetzt Bedeutung:
+> Run → Bernstein verdienen → Shop → Upgrade kaufen → Buff im
+> nächsten Run. Tyrannosaurus Prime stomps in Rage-Phase und schüttelt
+> dabei die Camera. Iso-World mit Smooth-Camera-Follow + Auto-Bounds +
+> Padding läuft visuell sauber. Modder-Surface ist 9 Content-Types
+> + 24 EventBus-Signals.
+>
+> 11 neue ADRs (0030–0040), 1 neuer Autoload (MetaProgression),
+> 4 neue EventBus-Signals (boss_ability_used, boss_phase_changed,
+> currency_changed, upgrade_purchased), neue Iso-World-/Camera-/
+> Audio-/Shop-Infrastruktur, ~3500 neue Test-Zeilen.
+>
+> Save-Schema bleibt v1 (alle Erweiterungen sind additive Slots
+> unter `data.*`). Saves von 0.0.x laden sauber als 0.2.0.
+
+### Added
+- **ADR 0040:** Meta-Shop-UI + UpgradeDef — permanente Upgrade-Pipeline.
+  4 initiale Upgrades (stronger_jaws, tougher_hide, faster_legs,
+  sharper_eyes) mit gestuften Costs. Shop-Overlay auf CanvasLayer 90.
+- `core/content/upgrade_def.gd` — UpgradeDef-Resource (max_level,
+  cost_per_level, stat_modifiers_per_level, cost_currency).
+- `content/upgrades/{stronger_jaws,tougher_hide,faster_legs,sharper_eyes}.tres`
+  — 4 Initial-Upgrades, total 14 Levels Käufe für 1280 Bernstein.
+- `core/content_loader.gd` — neuer Type `upgrade`. ContentLoader hat
+  jetzt **8 Types** (mutation, enemy, boss, dino, wave, sound, map, upgrade).
+- `core/meta_progression.gd` erweitert um:
+  - `purchase_upgrade(id)`, `get_upgrade_level(id)`, `get_upgrade_cost(id)`
+  - `can_afford_upgrade(id)`, `list_upgrade_levels()`
+  - `get_aggregated_modifiers()` (Bridge zu Modifier-Pipeline)
+  - Save/Load-Erweiterung: `upgrade_levels`-Slot
+- `core/event_bus.gd` — neues Signal
+  `upgrade_purchased(upgrade_id, new_level)`. EventBus-Total: 23 → **24 Signals**.
+- `core/ui/shop_overlay.gd` + `.tscn` — CanvasLayer 90, listet alle
+  Upgrades, Buy-Button per Row.
+- `core/run_scene/run.tscn` — `ShopLayer` als Child instantiiert.
+- `core/player/player_character.gd` — `get_aggregated_or_empty()`
+  mergt PlayerMutations + MetaProgression additiv. Subscribes
+  `EventBus.upgrade_purchased`.
+- `tests/unit/test_upgrade_def.gd` — 14 Tests.
+- `tests/unit/test_meta_progression.gd` — `+ 12 Upgrade-Tests`
+  (purchase, can_afford, max_level, signal, save/load-roundtrip).
+- locale/{de,en}.po um 8 upgrade.*-Keys.
+- BALANCE.csv um 4 Upgrade-Einträge (jetzt 28 total).
+
+### Save-Schema (v1.2, additive)
+- `data.upgrade_levels: Dictionary[upgrade_id → int]`. Saves vor v0.2.0
+  ohne diesen Slot werden korrekt geladen (Default `{}`).
+
+### Public-API additiv
+- `UpgradeDef`-Schema mit max_level/cost_per_level/stat_modifiers_per_level
+- `MetaProgression.purchase_upgrade()`, `get_upgrade_level()`,
+  `get_upgrade_cost()`, `can_afford_upgrade()`, `list_upgrade_levels()`,
+  `get_aggregated_modifiers()`
+- `EventBus.upgrade_purchased(id, new_level)`
+- `ShopOverlay.show_shop()`, `hide_shop()`, `refresh_list()`
+- ContentLoader hat jetzt 8 Types
+
+### Spielfühl-Konsequenz
+- **Loop ist geschlossen**: Spieler stirbt → Save speichert Bernstein →
+  Shop öffnen → "Stronger Jaws" Lv 1 für 50 Bernstein kaufen →
+  Nächster Run macht +5% Damage permanent
+- Bernstein hat jetzt klares Ziel: Bossen jagen, Upgrades kaufen,
+  stärker zurückkehren
+
+### Test-Suite
+- 35 Scripts, ~530 Tests (Sandbox-Cache zeigt teilweise stale-counts,
+  Windows-Files sind aktuell).
+
+---
+
+### Added
+- **ADR 0039:** Custom-Shake-Profiles — pro EventBus-Signal eigenes
+  ShakeProfile (Trauma + Decay + MaxOffset). Modder können Custom-
+  Profiles registrieren. Boss-Abilities (ADR 0038) bekommen jetzt
+  ihren eigenen Shake (Stomp = 0.5 trauma).
+- `core/world/shake_profile.gd` — Resource (trauma_amount,
+  decay_per_second, max_offset) mit validate().
+- `core/world/profiles/profile_player_damaged.tres` (0.3 trauma)
+- `core/world/profiles/profile_boss_defeated.tres` (0.7 trauma)
+- `core/world/profiles/profile_boss_stomp.tres` (0.5 trauma)
+- `core/world/run_camera.gd` erweitert um:
+  - `PROFILE_PLAYER_DAMAGED`, `PROFILE_BOSS_DEFEATED`, `PROFILE_BOSS_STOMP`
+    Konstanten (preloaded)
+  - `add_trauma_from_profile(profile)` API
+  - `register_signal_profile(signal_name, profile)` Mod-API
+  - `register_ability_profile(ability_id, profile)` für boss_ability_used
+  - `get_signal_profile(signal_name)` / `get_ability_profile(id)`
+  - `_on_boss_ability_used`-Subscription
+  - Default-Mappings im _ready: player_damaged, boss_defeated,
+    tyrannosaurus_stomp
+- `tests/unit/test_run_camera.gd` — `+ 11 Profile-Tests`
+  (Default-Mappings, Custom-Override, Schema-Validate,
+  EventBus-Integration).
+
+### Public-API additiv
+- `ShakeProfile` Resource-Schema
+- `RunCamera.add_trauma_from_profile(profile)`
+- `RunCamera.register_signal_profile(name, profile)`
+- `RunCamera.register_ability_profile(id, profile)`
+- `RunCamera.get_signal_profile(name)`, `get_ability_profile(id)`
+- `RunCamera.PROFILE_*` Konstanten
+
+### Spielfühl-Konsequenz
+- Stomp-Damage in Rage-Phase löst spürbaren Camera-Shake aus —
+  Spieler fühlt das Gewicht des Bosses
+- Modder können ihre eigenen Boss-Abilities mit eigenen Shake-
+  Profiles ausstatten
+
+### Backward-Kompatibilität
+- Wenn kein Profile gemappt ist, fällt RunCamera auf hardcoded
+  `trauma_on_player_damaged` etc. zurück (ADR 0035-Verhalten)
+
+---
+
+### Added
+- **ADR 0038:** Boss-Abilities-Schema — BossPhase kann jetzt eine
+  Liste von BossAbility-Resources tragen, die periodisch ausgelöst
+  werden. Erste konkrete Ability: BossStomp (AOE-Damage).
+- `core/content/boss_ability.gd` — Base-Resource (id, cooldown,
+  initial_delay, virtual `trigger`).
+- `core/content/abilities/boss_stomp.gd` — `BossStomp extends BossAbility`:
+  - `radius: float`, `damage: float`
+  - `find_player_health_in_radius(center, radius, players)` als pure
+    static (Test-Hook)
+- `core/content/boss_phase.gd` — `+ abilities: Array[BossAbility]`.
+- `core/boss/boss_mob.gd` — `_tick_abilities(delta)` im
+  `_physics_process`, per-Ability-Cooldown via `_ability_cooldowns`-Dict,
+  Reset bei Phase-Wechsel.
+- `core/event_bus.gd` — neues Signal
+  `boss_ability_used(boss_id, ability_id, position)`.
+  EventBus-Total: 22 → **23 Signals**.
+- `tests/unit/test_event_bus.gd` — KNOWN_SIGNALS um `boss_ability_used`
+  ergänzt.
+- `content/bosses/tyrannosaurus_prime.tres` — Rage-Phase bekommt
+  `tyrannosaurus_stomp` (cooldown=4s, radius=140px, damage=25).
+- `tests/unit/test_boss_abilities.gd` — 14 Tests:
+  - BossAbility/BossStomp-Schema-Defaults und Validate
+  - Pure-Function `find_player_health_in_radius` mit close/far/no-health
+  - BossPhase.abilities-Array
+  - tyrannosaurus_prime-Wiring (Rage-Phase hat Stomp)
+  - BossMob-Tick: initial_delay, Cooldown, Phase-Reset, dead-boss-skip
+
+### Spielfühl-Konsequenz
+- Tyrannosaurus Prime ist in Rage-Phase aktiv aggressiv: alle ~4s
+  schlägt er zu, alle Players in 140px Radius bekommen 25 Damage.
+- Rage-Phase fühlt sich finales Threat-Gefühl an — Spieler muss aktiv
+  kiten, kann nicht mehr stehen bleiben.
+
+### Public-API additiv
+- `BossAbility.trigger(boss)` (virtual)
+- `BossStomp.find_player_health_in_radius(...)` (static)
+- `BossPhase.abilities: Array[BossAbility]`
+- `EventBus.boss_ability_used(boss_id, ability_id, position)`
+- `BossMob._tick_abilities(delta)` + `_ability_cooldowns` Dict
+
+---
+
 ### Added
 - **ADR 0037:** Camera-Bounds-Padding — Camera klemmt nicht mehr
   strikt am Plattform-Rand. `bounds_padding: Vector2` erweitert das

@@ -94,6 +94,32 @@ msgstr "T-PRIME: ENRAGED"
 msgid "boss.tyrannosaurus_prime.phase_rage"
 msgstr "T-PRIME: FRENZY!"
 
+# --- Upgrades (ADR 0040) ---
+
+msgid "upgrade.stronger_jaws.name"
+msgstr "Stronger Jaws"
+
+msgid "upgrade.stronger_jaws.tooltip"
+msgstr "+5% damage per level. Permanent."
+
+msgid "upgrade.tougher_hide.name"
+msgstr "Tougher Hide"
+
+msgid "upgrade.tougher_hide.tooltip"
+msgstr "+10% max HP per level. Permanent."
+
+msgid "upgrade.faster_legs.name"
+msgstr "Faster Legs"
+
+msgid "upgrade.faster_legs.tooltip"
+msgstr "+10% speed per level. Permanent."
+
+msgid "upgrade.sharper_eyes.name"
+msgstr "Sharper Eyes"
+
+msgid "upgrade.sharper_eyes.tooltip"
+msgstr "+20% pickup radius per level. Permanent."
+
 # --- Maps (ADR 0036) ---
 
 msgid "map.default.name"

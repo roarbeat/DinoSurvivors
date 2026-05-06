@@ -31,6 +31,10 @@ var _spawn_time_msec: int = 0
 ## (z.B. _def.phases ist leer oder Boss noch nicht setup).
 var _current_phase_idx: int = -1
 
+## Per-Ability-Cooldowns (ADR 0038). Map ability_id → seconds_remaining.
+## Zurückgesetzt bei Phase-Wechsel.
+var _ability_cooldowns: Dictionary = {}
+
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -149,6 +153,28 @@ func _physics_process(delta: float) -> void:
 	if health == null or health.is_dead():
 		return
 	_move_toward_player(delta)
+	_tick_abilities(delta)
+
+
+## Tickt alle Abilities der aktuellen Phase (ADR 0038). Pro Ability
+## ein eigener Cooldown-Timer. Cooldowns werden bei Phase-Wechsel
+## zurückgesetzt (siehe `_evaluate_phase`).
+func _tick_abilities(delta: float) -> void:
+	if _current_phase_idx < 0 or _current_phase_idx >= _def.phases.size():
+		return
+	var phase: BossPhase = _def.phases[_current_phase_idx]
+	if phase.abilities.is_empty():
+		return
+	for ability in phase.abilities:
+		if ability == null:
+			continue
+		var key: StringName = ability.id
+		var cd: float = float(_ability_cooldowns.get(key, ability.initial_delay))
+		cd -= delta
+		if cd <= 0.0:
+			ability.trigger(self)
+			cd = ability.cooldown
+		_ability_cooldowns[key] = cd
 
 
 func _move_toward_player(delta: float) -> void:
@@ -265,6 +291,10 @@ func _evaluate_phase() -> void:
 		return
 	_current_phase_idx = new_idx
 	_apply_phase(new_idx)
+	# Ability-Cooldowns reset (ADR 0038) — neue Phase startet mit
+	# initial_delay pro Ability (durch Dictionary-Reset bekommt der
+	# nächste Tick automatisch ability.initial_delay als Default).
+	_ability_cooldowns.clear()
 	if get_node_or_null("/root/EventBus") != null:
 		var phase: BossPhase = _def.phases[new_idx]
 		EventBus.boss_phase_changed.emit(boss_id, new_idx, phase.label_key)

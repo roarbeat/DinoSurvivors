@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=2 format=3 uid="uid://dino_upgrade_stronger_jaws"]
+
+[ext_resource type="Script" path="res://core/content/upgrade_def.gd" id="1_upgradedef"]
+
+[resource]
+script = ExtResource("1_upgradedef")
+id = &"stronger_jaws"
+display_name_key = &"upgrade.stronger_jaws.name"
+description_key = &"upgrade.stronger_jaws.tooltip"
+source_mod_id = &""
+override_existing = false
+max_level = 3
+cost_per_level = [50, 100, 200]
+stat_modifiers_per_level = [{
+	&"damage_pct": 0.05
+}, {
+	&"damage_pct": 0.10
+}, {
+	&"damage_pct": 0.15
+}]
+cost_currency = &"amber"

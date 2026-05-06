@@ -441,6 +441,115 @@ func test_boss_defeated_signal_adds_trauma() -> void:
 
 
 # ---------------------------------------------------------------------------
+# ShakeProfiles (ADR 0039)
+# ---------------------------------------------------------------------------
+
+func test_default_profiles_loaded_in_ready() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	# Default-Mappings sind player_damaged + boss_defeated
+	var p1: ShakeProfile = cam.get_signal_profile(&"player_damaged")
+	assert_not_null(p1)
+	assert_almost_eq(p1.trauma_amount, 0.3, 0.001)
+	var p2: ShakeProfile = cam.get_signal_profile(&"boss_defeated")
+	assert_not_null(p2)
+	assert_almost_eq(p2.trauma_amount, 0.7, 0.001)
+	cam.queue_free()
+
+
+func test_default_ability_profile_for_stomp() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	var p: ShakeProfile = cam.get_ability_profile(&"tyrannosaurus_stomp")
+	assert_not_null(p)
+	assert_almost_eq(p.trauma_amount, 0.5, 0.001)
+	cam.queue_free()
+
+
+func test_add_trauma_from_profile_increments() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	var p := ShakeProfile.new()
+	p.trauma_amount = 0.4
+	cam.add_trauma_from_profile(p)
+	assert_almost_eq(cam.trauma, 0.4, 0.001)
+	cam.queue_free()
+
+
+func test_add_trauma_from_null_profile_is_noop() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	cam.add_trauma_from_profile(null)
+	assert_eq(cam.trauma, 0.0)
+	cam.queue_free()
+
+
+func test_register_signal_profile_overrides_default() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	var custom := ShakeProfile.new()
+	custom.trauma_amount = 0.9
+	cam.register_signal_profile(&"player_damaged", custom)
+	# Signal feuern → Camera nimmt den neuen Wert (0.9 statt 0.3)
+	EventBus.player_damaged.emit(5.0, &"test")
+	assert_almost_eq(cam.trauma, 0.9, 0.001)
+	cam.queue_free()
+
+
+func test_register_ability_profile_for_custom_ability() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	var custom := ShakeProfile.new()
+	custom.trauma_amount = 0.6
+	cam.register_ability_profile(&"my_custom_ability", custom)
+	# Direkt das gespeicherte Profile abfragen
+	var got := cam.get_ability_profile(&"my_custom_ability")
+	assert_eq(got, custom)
+	cam.queue_free()
+
+
+func test_boss_ability_used_signal_triggers_shake_via_profile() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	# tyrannosaurus_stomp ist Default-gemapped auf 0.5 trauma
+	EventBus.boss_ability_used.emit(&"tyrannosaurus_prime", &"tyrannosaurus_stomp", Vector2.ZERO)
+	assert_almost_eq(cam.trauma, 0.5, 0.001)
+	cam.queue_free()
+
+
+func test_boss_ability_used_with_unmapped_ability_is_noop() -> void:
+	var cam: RunCamera = RUN_CAMERA_SCENE.instantiate()
+	add_child(cam)
+	# Nicht-gemappte Ability → kein Shake
+	EventBus.boss_ability_used.emit(&"some_boss", &"unknown_ability", Vector2.ZERO)
+	assert_eq(cam.trauma, 0.0)
+	cam.queue_free()
+
+
+# ---------------------------------------------------------------------------
+# ShakeProfile-Schema-Defaults
+# ---------------------------------------------------------------------------
+
+func test_shake_profile_default_values() -> void:
+	var p := ShakeProfile.new()
+	assert_almost_eq(p.trauma_amount, 0.3, 0.001)
+	assert_almost_eq(p.decay_per_second, 0.0, 0.001)
+	assert_almost_eq(p.max_offset, 0.0, 0.001)
+
+
+func test_shake_profile_validate_rejects_out_of_range_trauma() -> void:
+	var p := ShakeProfile.new()
+	p.trauma_amount = 1.5
+	assert_string_contains(p.validate(), "trauma_amount")
+
+
+func test_shake_profile_validate_rejects_negative_decay() -> void:
+	var p := ShakeProfile.new()
+	p.decay_per_second = -1.0
+	assert_string_contains(p.validate(), "decay_per_second")
+
+
+# ---------------------------------------------------------------------------
 # Crash-Protection
 # ---------------------------------------------------------------------------
 

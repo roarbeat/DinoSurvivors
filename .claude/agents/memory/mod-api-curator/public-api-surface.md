@@ -26,6 +26,8 @@ Stabilität: Renames + Parameter-Änderungen sind Mod-Breaking.
 - `boss_spawned(boss_id: StringName, position: Vector2)`
 - `boss_defeated(boss_id: StringName, run_time: float)`
 - `boss_phase_changed(boss_id: StringName, phase_index: int, label_key: StringName)` (ADR 0029)
+- `boss_ability_used(boss_id: StringName, ability_id: StringName, position: Vector2)` (ADR 0038)
+- `upgrade_purchased(upgrade_id: StringName, new_level: int)` (ADR 0040)
 
 ### Run-Lifecycle
 - `run_started(dino_id: StringName)`
@@ -55,7 +57,7 @@ Stabilität: Renames + Parameter-Änderungen sind Mod-Breaking.
 ### Content / Boot
 - `content_loaded(type_count: int, item_count: int)`
 
-**Insgesamt: 22 Signals** — synchron mit `tests/unit/test_event_bus.gd::EXPECTED_SIGNALS`.
+**Insgesamt: 24 Signals** — synchron mit `tests/unit/test_event_bus.gd::EXPECTED_SIGNALS`.
 
 ---
 
@@ -185,6 +187,57 @@ Phase-Resolver-Verhalten:
 - MONOTON: Index steigt nur, kein Rückfall bei Heal
 - Bei Phase-Wechsel feuert `EventBus.boss_phase_changed`
 
+**BossAbility Resource-Base (ADR 0038):**
+```
+id              : StringName
+cooldown        : float (>0)         # Sekunden zwischen Triggers
+initial_delay   : float (≥0)         # Sekunden bis erster Trigger nach Phase-Start
+
+# Virtual:
+func trigger(boss: Node) -> void
+```
+
+**BossStomp extends BossAbility (ADR 0038):**
+```
+radius   : float = 120.0
+damage   : float = 25.0
+
+# Pure function (Test-Hook):
+static find_player_health_in_radius(center, radius, players) -> Array[HealthComponent]
+```
+
+`BossPhase.abilities: Array[BossAbility]` — leer = keine aktiven
+Abilities (nur Speed/Damage-Multiplikatoren wirken).
+
+BossMob-Tick: pro Ability eigener Cooldown-Timer in
+`_ability_cooldowns: Dictionary`. Reset bei Phase-Wechsel.
+
+**UpgradeDef extends ContentItem (ADR 0040):**
+```
+max_level                   : int (>0)              # Single-Buy oder N-Stage
+cost_per_level              : Array[int]            # Bernstein-Kosten pro Level-Up
+stat_modifiers_per_level    : Array[Dictionary]     # Schema wie MutationDef.stat_modifiers
+cost_currency               : StringName            # default &"amber"
+tier_description_key        : StringName            # optional i18n-Key
+
+func get_cost_for_level(current_level: int) -> int  # -1 wenn max erreicht
+func get_modifiers_for_level(level: int) -> Dictionary
+```
+
+MetaProgression-API für Upgrades:
+```gdscript
+MetaProgression.get_upgrade_level(id) -> int
+MetaProgression.get_upgrade_cost(id) -> int
+MetaProgression.can_afford_upgrade(id) -> bool
+MetaProgression.purchase_upgrade(id) -> bool   # subtrahiert Currency, +1 Level
+MetaProgression.list_upgrade_levels() -> Dictionary
+MetaProgression.get_aggregated_modifiers() -> Dictionary  # Modifier-Stack für PlayerCharacter
+```
+
+PlayerCharacter mergt `PlayerMutations.get_aggregated()` mit
+`MetaProgression.get_aggregated_modifiers()` additiv beim _apply_stats.
+EventBus.upgrade_purchased triggert Re-Apply.
+
 **MapDef extends ContentItem (ADR 0036):**
 ```
 grid_size           : Vector2i        # default (8, 8)
@@ -304,6 +357,23 @@ var trauma: float  # 0.0 – 1.0, public-read
 # Pure Functions (Test-Hooks)
 static func compute_shake_offset(trauma, max_offset, rng) -> Vector2
 static func compute_trauma_after_decay(trauma, decay_per_s, delta) -> float
+
+# Custom-Shake-Profiles (ADR 0039)
+const PROFILE_PLAYER_DAMAGED: ShakeProfile
+const PROFILE_BOSS_DEFEATED:  ShakeProfile
+const PROFILE_BOSS_STOMP:     ShakeProfile
+
+func add_trauma_from_profile(profile: ShakeProfile) -> void
+func register_signal_profile(signal_name: StringName, profile: ShakeProfile) -> void
+func register_ability_profile(ability_id: StringName, profile: ShakeProfile) -> void
+func get_signal_profile(signal_name: StringName) -> ShakeProfile
+func get_ability_profile(ability_id: StringName) -> ShakeProfile
+
+# ShakeProfile Resource (ADR 0039)
+class ShakeProfile extends Resource:
+    @export var trauma_amount: float = 0.3
+    @export var decay_per_second: float = 0.0  # 0 = Camera-Default
+    @export var max_offset: float = 0.0          # 0 = Camera-Default
 
 # Pure Function (Test-Hook)
 static func compute_next_position(

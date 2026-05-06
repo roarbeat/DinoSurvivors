@@ -73,6 +73,8 @@ func _ready() -> void:
 	# Auf Mutations-Änderungen reagieren
 	if get_node_or_null("/root/EventBus") != null:
 		EventBus.mutations_changed.connect(_on_mutations_changed)
+		# Meta-Upgrades (ADR 0040) — Re-Apply bei Kauf
+		EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
 
 
 # ---------------------------------------------------------------------------
@@ -276,13 +278,32 @@ func _on_mutations_changed() -> void:
 	_apply_stats(get_aggregated_or_empty())
 
 
-## Holt aggregierte Mutations-Stats vom PlayerMutations-Autoload.
-## Liefert leeres Result-Schema, wenn der Autoload nicht da ist (z.B. Tests
-## ohne PlayerMutations).
+## Re-Apply der Stats wenn Meta-Upgrade gekauft (ADR 0040).
+func _on_upgrade_purchased(_upgrade_id: StringName, _new_level: int) -> void:
+	_apply_stats(get_aggregated_or_empty())
+
+
+## Holt aggregierte Mutations-Stats vom PlayerMutations-Autoload UND
+## addiert die Meta-Upgrade-Modifier additiv drauf (ADR 0040).
+## Liefert leeres Result-Schema, wenn beide Autoloads fehlen.
 func get_aggregated_or_empty() -> Dictionary:
-	if get_node_or_null("/root/PlayerMutations") == null:
-		return { "outgoing": [], "incoming": [], "unhandled": {} }
-	return PlayerMutations.get_aggregated()
+	var result: Dictionary
+	if get_node_or_null("/root/PlayerMutations") != null:
+		result = PlayerMutations.get_aggregated()
+	else:
+		result = { "outgoing": [], "incoming": [], "unhandled": {} }
+
+	# Meta-Upgrades draufaddieren (ADR 0040)
+	if get_node_or_null("/root/MetaProgression") != null:
+		var meta: Dictionary = MetaProgression.get_aggregated_modifiers()
+		for m in meta["outgoing"]:
+			result["outgoing"].append(m)
+		for m in meta["incoming"]:
+			result["incoming"].append(m)
+		for k in meta["unhandled"].keys():
+			var prev: float = float(result["unhandled"].get(k, 0.0))
+			result["unhandled"][k] = prev + float(meta["unhandled"][k])
+	return result
 
 
 func _apply_stats(agg: Dictionary) -> void:

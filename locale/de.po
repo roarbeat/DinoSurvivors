@@ -94,6 +94,32 @@ msgstr "T-PRIME: GEREIZT"
 msgid "boss.tyrannosaurus_prime.phase_rage"
 msgstr "T-PRIME: WAHNSINN!"
 
+# --- Upgrades (ADR 0040) ---
+
+msgid "upgrade.stronger_jaws.name"
+msgstr "Stärkere Kiefer"
+
+msgid "upgrade.stronger_jaws.tooltip"
+msgstr "+5% Damage pro Level. Permanent."
+
+msgid "upgrade.tougher_hide.name"
+msgstr "Härtere Haut"
+
+msgid "upgrade.tougher_hide.tooltip"
+msgstr "+10% max HP pro Level. Permanent."
+
+msgid "upgrade.faster_legs.name"
+msgstr "Schnellere Beine"
+
+msgid "upgrade.faster_legs.tooltip"
+msgstr "+10% Speed pro Level. Permanent."
+
+msgid "upgrade.sharper_eyes.name"
+msgstr "Schärfere Augen"
+
+msgid "upgrade.sharper_eyes.tooltip"
+msgstr "+20% Pickup-Radius pro Level. Permanent."
+
 # --- Maps (ADR 0036) ---
 
 msgid "map.default.name"

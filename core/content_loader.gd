@@ -47,6 +47,10 @@ const TYPE_CONFIG: Dictionary = {
 		"dir": "maps",
 		"script_path": "res://core/content/map_def.gd",
 	},
+	&"upgrade": {
+		"dir": "upgrades",
+		"script_path": "res://core/content/upgrade_def.gd",
+	},
 }
 
 const CORE_CONTENT_ROOT := "res://content/"
