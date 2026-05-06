@@ -24,8 +24,12 @@ extends Node
 		_current_hp = min(_current_hp, max_hp)
 
 ## true → emittet EventBus.player_damaged / player_died.
-## false → erwartet eine `enemy_id: StringName` auf dem Owner-Node.
+## false → emittet EventBus.enemy_died (mit owner.enemy_id).
 @export var is_player: bool = false
+
+## true → unterdrückt enemy_died (Owner feuert boss_defeated selbst).
+## Wird von BossMob gesetzt (ADR 0025).
+@export var is_boss: bool = false
 
 ## Incoming Modifier-Stack (ADR 0010). Wird auf eingehende DamageInfo
 ## angewandt, bevor HP reduziert wird. Sortiert nach priority (niedrig zuerst).
@@ -174,7 +178,11 @@ func _die(info: DamageInfo) -> void:
 		# PlayerDeathHandler-Autoload, oder ein Listener im Game-Director).
 		return
 
-	# Nicht-Player: enemy_id von Owner-Node ablesen.
+	if is_boss:
+		# BossMob feuert boss_defeated selbst — wir feuern hier KEIN enemy_died.
+		return
+
+	# Nicht-Player, nicht-Boss: enemy_id von Owner-Node ablesen.
 	var owner_node := get_parent()
 	if owner_node == null:
 		return

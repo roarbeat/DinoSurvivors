@@ -12,6 +12,21 @@ extends ContentItem
 ## verlangt das Feld nicht.
 @export var scene: PackedScene
 
+## Visuelle Differenzierung (ADR 0024). Default = rot 16×16
+## (matcht enemy_mob.tscn-Default für Backward-Kompat).
+@export var body_color: Color = Color(0.82, 0.18, 0.18)
+@export var body_size: Vector2 = Vector2(16, 16)
+
+## Visual-Provider (ADR 0027). Optionale PackedScene, die statt der
+## ColorRect-Body instanziert wird. Wenn null, bleibt ColorRect-Mode aktiv.
+## Erlaubt Mods/Designer, eigene Sprites/Animationen einzuhängen, ohne
+## Code zu schreiben.
+@export var visual_scene: PackedScene
+
+## Pivot-Offset für die HealthBar relativ zum Sprite-Pivot. Nur relevant
+## wenn visual_scene gesetzt ist (ColorRect-Mode nutzt body_size).
+@export var visual_pivot_offset: Vector2 = Vector2.ZERO
+
 
 func validate() -> String:
 	var base := super.validate()

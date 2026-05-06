@@ -6,7 +6,610 @@ angelehnt; SemVer ab 1.0.0.
 
 ## [Unreleased]
 
-(noch keine Änderungen seit 0.0.4)
+### Added
+- **ADR 0032:** Camera-System (Player-Follow + Bounds) — Camera2D folgt
+  dem Player mit Smooth-Lerp, Pixel-Snap für Pixel-Art-Crispness,
+  optionale World-Bounds. Pure-Function-Update macht das System
+  headless-testbar.
+- `core/world/run_camera.gd` + `.tscn` — `RunCamera extends Camera2D`:
+  - `set_target(node)` / `snap_to_target()` / `set_follow_smoothing(v)` /
+    `set_bounds(min, max)`
+  - `compute_next_position()` als static pure function für Tests
+  - Default `zoom = (2, 2)` (Pixel-Art-Standard)
+  - Default `follow_smoothing = 5.0` (Survivor-likes-Feel)
+  - Frame-Rate-Independent Lerp: `alpha = 1 - exp(-smoothing * delta)`
+  - Crash-Protection bei freed target via `is_instance_valid`
+- `core/run_scene/run.tscn` — `RunCamera`-Child neben PlayerSlot
+- `core/run_scene/run.gd` — sowohl `_ready` als auch `_spawn_player_and_start`
+  hängen Camera per `set_target(_player) + snap_to_target()` an.
+  Camera überlebt Restart (kein Re-Instanziieren nötig).
+- `tests/unit/test_run_camera.gd` — 19 Tests:
+  - 6 Pure-Function-Tests (compute_next_position)
+  - Target-Tracking, Snap, Pixel-Snap-Roundtrip
+  - set_follow_smoothing-Clamp, set_bounds-Auto-Sort
+  - Default-Zoom, Default-Smoothing, Pixel-Snap-Default
+  - Crash-Protection bei freed target
+
+### Spielfühl-Konsequenz
+- F5 zeigt jetzt: Player läuft, Camera folgt smooth — der Spieler
+  bleibt zentriert auf dem Bildschirm
+- Mit Iso-World (ADR 0031) im Hintergrund fühlt sich das Spielfeld
+  erstmals wirklich navigiert an
+- Restart-Run hat keinen Camera-Jump (Snap auf Player-Position)
+
+### Public-API additiv
+- `RunCamera.set_target()`, `snap_to_target()`, `set_follow_smoothing()`,
+  `set_bounds()`
+- `RunCamera.compute_next_position()` (static)
+- @export-Properties: `target`, `follow_smoothing`, `pixel_snap`,
+  `enable_limits`, `bound_min`, `bound_max`
+
+### Test-Suite
+- 32 Scripts, 450 Tests (von 431 → +19 Camera-Tests).
+
+---
+
+### Added
+- **ADR 0031:** Art-Pipeline + Iso-Map-Konventionen — Asset-Drop-
+  Infrastruktur. Folder-Struktur, Palette als Single-Source-of-Truth,
+  Iso-World-Skelett als Background.
+- `core/art/palette.gd` — `Palette`-Klasse mit 16 Color-Konstanten aus
+  `docs/art/VISUAL-TARGET.md`:
+  - BG_CHARCOAL, GRASS_LIGHT/MID/DARK/EDGE, DIRT_PATH/SIDE_TOP/BOTTOM
+  - PLAYER_BODY/ACCENT, COIN_GOLD/HIGHLIGHT, CRYSTAL_GREEN
+  - FLOWER_RED/YELLOW/LILA
+  - `random_grass(rng)` Helper (deterministisch mit RNG, sonst global randf)
+- `core/world/iso_world.gd` + `.tscn` — Iso-Tile-Map-Skelett:
+  - 8×8 Grid (konfigurierbar via @export)
+  - Polygon2D-Diamonds als Placeholder-Tiles (64×32 Iso-Standard)
+  - Cross-Pfad in DIRT_PATH-Color durch Mitte
+  - Deterministische Color-Variation (hash-basiert) für stable Tests
+  - Pure-Function-Public-API: `tile_to_iso`, `iso_to_tile`, `world_size`,
+    `is_path_tile`
+- `core/run_scene/run.tscn` — neuer `WorldLayer` als Child mit
+  z_index=-10, instantiiert `IsoWorld`. Mobs rendern darüber.
+- `art/` Folder-Struktur mit 9 READMEs (high-level + 8 subfolder):
+  - `tiles/`, `decor/`, `player/`, `enemies/`, `bosses/`, `pickups/`,
+    `ui/`, `audio/` — jedes README spezifiziert Sprite-Größe, Pivot,
+    erwartete Files
+- `docs/art/VISUAL-TARGET.md` — bereits in v0.1.0 angelegt (User-Mood-
+  Reference + verbal-Spec)
+- `tests/unit/test_palette.gd` — 9 Tests für Color-Konstanten,
+  random_grass-Determinismus
+- `tests/unit/test_iso_world.gd` — 14 Tests für Iso-Math, Tile-Generation,
+  Path-Logik, world_size
+
+### Spielfühl-Konsequenz
+- F5 zeigt jetzt eine sichtbare Tile-Plattform unter den Mobs (8×8
+  Grid mit Cross-Pfad). Spiel fühlt sich verortet an, auch ohne echte
+  Sprites.
+- Sobald Asset-Artist Tile-PNGs liefert, wird `IsoWorld` von Polygon2D
+  auf TileMapLayer umgestellt — gleiches Layout, andere Render-Quelle.
+- `EnemyDef.body_color` / `BossDef.body_color` können jetzt aus der
+  Palette lesen (z.B. `body_color = Palette.GRASS_DARK`) statt
+  hardcoded Color-Tupel — kommt mit kleinen Refactor-Pässen.
+
+### Backward-Kompatibilität
+- ColorRect-Mobs (ADR 0024) bleiben unverändert — IsoWorld liegt unter
+  ihnen via z_index=-10.
+- Alle existierenden Tests laufen weiter durch (keine API-Brüche).
+
+### Public-API additiv
+- `Palette.<COLOR_CONST>` (16 Color-Konstanten als Klassen-Attribute)
+- `Palette.random_grass(rng = null) -> Color`
+- `IsoWorld.tile_to_iso(tile, tile_size = TILE_SIZE) -> Vector2` (static)
+- `IsoWorld.iso_to_tile(screen, tile_size = TILE_SIZE) -> Vector2i` (static)
+- `IsoWorld.world_size() -> Vector2`
+- `IsoWorld.is_path_tile(tile) -> bool`
+
+### Test-Suite
+- 31 Scripts, 429 Tests (von 406 → +23 Iso-World/Palette-Tests).
+
+---
+
+## [0.1.0] - 2026-05-06
+
+> **Phase 4 — Vertical-Slice.** Boss-Fights bekommen Spannungsbogen
+> (Phasen-Schema), Visual-Provider erlaubt Sprite-Drop ohne Code-Touch,
+> SFX-Bus ist scharf gestellt für Audio-Drop, Bernstein-Currency
+> überlebt jetzt Runs. Die ganze Asset-frei lauffähige Mechanik steht.
+>
+> 5 neue ADRs (0026 WaveDef, 0027 Visual-Provider, 0028 SFX-Bus,
+> 0029 Boss-Phasen, 0030 Meta-Progression), 1 neuer Autoload,
+> 1 neuer EventBus-Signal, ~75 neue Tests, ~3300 neue Zeilen.
+>
+> Public-API bleibt rückwärtskompatibel — alle 0.0.x-Saves laden
+> sauber, ColorRect-Mode bleibt Default-Visual.
+
+### Added
+- **ADR 0030:** Persistente Meta-Progression — Bernstein-Currency
+  überlebt jetzt Runs. Boss-Defeat zahlt automatisch
+  `BossDef.reward_currency_amount` aus, Save persistiert atomar via
+  EventBus.save_requested-Trigger im RunScene.
+- `core/meta_progression.gd` — neuer Autoload mit:
+  - `DEFAULT_CURRENCY = &"amber"` Konstante
+  - Public-API `get_currency`, `add_currency`, `set_currency`,
+    `list_currencies`, `reset`
+  - EventBus-Hooks: `boss_defeated` → Auto-Reward;
+    `save_requested` → schreibt Snapshot;
+    `save_loaded` → liest Snapshot
+  - Lower-Cap bei 0 (keine negativen Currency-Werte)
+  - Beliebige Currency-IDs erlaubt (Mods können eigene anlegen)
+- `project.godot` — `MetaProgression` als 9. Autoload (Reihenfolge:
+  EventBus → ContentLoader → SaveSystem → ModLoader → RunState →
+  WaveSpawner → PlayerMutations → SfxBus → MetaProgression).
+- `core/run_scene/run.gd` — `_on_run_ended` feuert
+  `EventBus.save_requested(&"run_end")`, sodass Currency nach jedem
+  Run automatisch persistiert wird.
+- `tests/unit/test_meta_progression.gd` — 19 Tests (Default-State,
+  add/set/get-API, Lower-Cap, Boss-Reward, Save-Roundtrip,
+  Legacy-Save-Backward-Kompat).
+
+### Changed
+- **SaveSystem-Reihenfolge-Fix**: `save_loaded`-Signal feuert jetzt
+  NACH dem `_data = loaded`-Assign, sodass Listener (MetaProgression)
+  über `SaveSystem.get_data()` direkt auf den geladenen State
+  zugreifen können. Bisheriges Verhalten hatte einen Race —
+  bestehender Code war davon nicht betroffen, da niemand
+  `save_loaded` für Daten-Lookups nutzte.
+
+### Save-Schema (v1.1, additive)
+- Save bekommt optionalen `data.meta_progression`-Slot mit
+  Currency-Dict. Saves vor v0.1.0 ohne diesen Slot werden korrekt
+  geladen (Default-State amber=0). **Keine Migration-File nötig.**
+
+### Public-API additiv
+- `MetaProgression.get_currency() / add_currency() / set_currency() /
+  list_currencies() / reset()`
+- `MetaProgression.DEFAULT_CURRENCY = &"amber"`
+- `MetaProgression.SAVE_KEY = "meta_progression"`
+
+### Spielfühl-Konsequenz
+- Run 1: Spieler tötet Tyrannosaurus auf Welle 5 → +50 Bernstein
+- Run-Ende → Save automatisch → Bernstein bleibt
+- Run 2: Spieler startet wieder bei 0 HP, aber 50 Bernstein bereits
+  im Konto → Foundation für Meta-Shop
+
+### Test-Suite
+- 29 Scripts, 399 Tests (von 380 → +19 MetaProgression-Tests).
+
+---
+
+### Added
+- **ADR 0029:** Boss-Phasen-Schema — Boss-Fights bekommen Spannungsbogen.
+  HP-Threshold-basierte Phasen mit Speed-/Damage-Multiplikatoren und
+  Color-Tint. Tyrannosaurus Prime hat jetzt 3 Phasen: Spawn (100%) →
+  Mid (66%) → Rage (33%, 50% schneller, 40% mehr Damage, rötlicher Body).
+- `core/content/boss_phase.gd` — Resource (hp_threshold, speed_multiplier,
+  damage_multiplier, color_tint, label_key) mit validate().
+- `core/content/boss_def.gd` — `phases: Array[Dictionary]` →
+  `Array[BossPhase]`, validate() prüft absteigende Sortierung.
+- `core/boss/boss_mob.gd` — Phase-Dispatch:
+  - `_on_health_changed` → `_evaluate_phase` bei jedem damage_taken/healed
+  - `_resolve_phase_index(hp_pct)` als pure function (testbar)
+  - Monoton fallend (kein Rückfall bei Heal)
+  - `_apply_phase` setzt Color-Tint auf Body / Visual.modulate
+  - `get_speed()` / `get_damage()` Phase-aware
+  - `get_current_phase_index()` als Public-API
+- `core/event_bus.gd` — neues Signal
+  `boss_phase_changed(boss_id, phase_index, label_key)`.
+  EventBus-Total: 21 → **22 Signals**.
+- `content/bosses/tyrannosaurus_prime.tres` — 3 BossPhase-SubResources:
+  - Spawn: 1.0 / 1.0× / 1.0× / weiß
+  - Mid:   0.66 / 1.2× / 1.15× / leicht rosa
+  - Rage:  0.33 / 1.5× / 1.4× / rot
+- `tests/unit/test_boss_phases.gd` — 16 Tests:
+  - Schema-Defaults und Validate-Regeln
+  - BossDef-Sort-Validation
+  - Phase-Resolver bei verschiedenen HP-Werten
+  - Speed/Damage-Multiplier-Application
+  - boss_phase_changed-Signal-Emission
+  - Monoton-Garantie (kein Rückfall bei Heal)
+  - Backward-Kompat (Boss ohne Phasen)
+- `tests/unit/test_event_bus.gd` — KNOWN_SIGNALS um boss_phase_changed
+  erweitert.
+- locale/{de,en}.po um 4 phase-Banner-Keys
+  (boss.tyrannosaurus_prime.phase_mid + .phase_rage in DE+EN).
+
+### Backward-Kompatibilität
+- `def.phases = []` → Boss verhält sich wie vor ADR 0029
+  (`get_current_phase_index() == -1`, Speed/Damage = base).
+- Alle bestehenden Boss-Tests (test_boss_mob.gd) laufen unverändert
+  durch — Phasen sind additiv.
+
+### Public-API additiv
+- `EventBus.boss_phase_changed(boss_id, phase_index, label_key)`
+- `BossPhase`-Resource-Schema
+- `BossMob.get_current_phase_index() -> int`
+- `BossMob.get_damage() -> float` (vorher direkt def.damage gelesen)
+- `BossDef.phases: Array[BossPhase]` (war Array[Dictionary])
+
+### Spielfühl-Konsequenz
+- Boss-Fight ab Welle 5 hat echten Spannungsbogen
+- Bei 33% HP wird Spieler zum Push gezwungen — letzte 250 HP sind die
+  härteste Phase
+
+### Test-Suite
+- 28 Scripts, 380 Tests (von 364 → +16 Boss-Phasen-Tests).
+
+---
+
+### Added
+- **ADR 0028:** SFX-Bus + SoundDef — Audio-Hooks bereit für Asset-Drop.
+  Neuer Autoload `SfxBus` lauscht auf bedeutsame EventBus-Signale und
+  triggert SoundDef-Playback über AudioStreamPlayer-Pool. v1: alle
+  SoundDefs sind Stubs (stream=null) → no-op bis Audio-Assets landen.
+- `core/audio/sfx_bus.gd` — Autoload mit:
+  - 8-er AudioStreamPlayer-Pool (Round-Robin)
+  - 6 Default-Mappings (enemy_died, boss_defeated, player_damaged,
+    player_died, mutation_picked, wave_started)
+  - Public-API `play()`, `set_muted()`, `pool_size()`,
+    `get_signal_mapping()`, `add_signal_mapping()` (Mod-API-Erweiterung)
+- `core/content/sound_def.gd` — Resource (`stream`, `volume_db`,
+  `pitch_random_range`).
+- `core/content_loader.gd` — neuer Type `sound`
+  (`res://content/sounds/`, mod-subpath `sounds/`).
+- `content/sounds/` — 6 SoundDef-Stubs:
+  - sfx_enemy_died (vol=-3dB, pitch ±0.1)
+  - sfx_boss_defeated (vol=+2dB)
+  - sfx_player_damaged (vol=0dB, pitch ±0.05)
+  - sfx_player_died (vol=0dB)
+  - sfx_mutation_picked (vol=+1dB)
+  - sfx_wave_started (vol=-2dB)
+- `project.godot` — `SfxBus` als 8. Autoload (Reihenfolge: EventBus →
+  ContentLoader → SaveSystem → ModLoader → RunState → WaveSpawner →
+  PlayerMutations → SfxBus).
+- `tests/unit/test_sound_def.gd` — 11 Tests (Discovery, Validate-Regeln,
+  Field-Loading, Type-Registration).
+- `tests/unit/test_sfx_bus.gd` — 13 Tests (Pool-Setup, Default-Mappings,
+  no-op-Verhalten, Mute-Hook, EventBus-Subscription-Smoke).
+- `tests/unit/test_content_loader.gd` um sound-Type-Check ergänzt.
+- locale/{de,en}.po um 12 sfx.*-Keys erweitert.
+- BALANCE.csv um 6 Sound-Einträge erweitert (jetzt 22 total).
+- agents/memory/content-author/content-id-registry.md — sound-Section.
+- docs/ARCHITECTURE.md — neuer Pattern-Block „SFX-Bus".
+- agents/memory/mod-api-curator/public-api-surface.md — neue Section 3.5
+  „SfxBus-API" + SoundDef-Schema unter §3.
+
+### Audio-Roadmap
+- v1: alle Streams null → SfxBus läuft no-op, alle Hooks sind aber
+  scharf gestellt
+- v0.0.10+: echte .ogg-Assets in `content/sounds/*.tres` referenzieren →
+  Audio läuft ohne Code-Touch
+- Backlog: Music-System, 3D-Audio, Bus-Mixer, SFX-Cooldown
+
+### Public-API additiv
+- `SfxBus.play(sound_id)` / `set_muted()` / `add_signal_mapping()`
+- `SoundDef`-Schema mit `stream`, `volume_db`, `pitch_random_range`
+- ContentLoader hat jetzt 6 Types (mutation/enemy/boss/dino/wave/sound)
+
+### Test-Suite
+- 27 Scripts, 363 Tests (von 339 → +24 Audio-Tests).
+
+---
+
+### Added
+- **ADR 0027:** Visual-Provider-Pattern — EnemyDef/DinoDef/BossDef
+  bekommen optionalen `visual_scene: PackedScene` Slot. Wenn gesetzt,
+  ersetzt die Scene den ColorRect-Body. Migrations-Pfad für künftige
+  Sprites/Animationen ist data-driven, kein Code-Touch nötig.
+- `core/content/enemy_def.gd` — `+visual_scene`, `+visual_pivot_offset`.
+- `core/content/dino_def.gd` — `+visual_scene`, `+visual_pivot_offset`.
+- `core/content/boss_def.gd` — `+visual_scene`, `+visual_pivot_offset`.
+- `core/enemy/enemy_mob.gd` — `_apply_visuals` jetzt mit Visual-
+  Provider-Pfad, hidden ColorRect bei Sprite-Mode.
+- `core/player/player_character.gd` — neue `_apply_visuals(dino)`,
+  wird beim `set_dino` aufgerufen.
+- `core/boss/boss_mob.gd` — analoges Pattern wie EnemyMob.
+- `tests/fixtures/visual_stub.tscn` — Test-Helper-Scene (Node2D mit
+  grünem Indicator-Quadrat).
+- `tests/unit/test_visual_provider.gd` — 13 Tests:
+  - Default null → ColorRect-Mode (Backward-Kompat)
+  - visual_scene gesetzt → Visual-Child instanziert + Body hidden
+  - Resetup-Idempotenz
+  - Existing .tres-Files haben visual_scene=null (Backward-Kompat)
+
+### Backward-Kompatibilität
+- Alle bestehenden EnemyDef/DinoDef/BossDef .tres-Files behalten ihren
+  ColorRect-Look (visual_scene defaults to null).
+- ColorRect-Tests aus ADR 0024 laufen unverändert durch.
+
+### Modder-Surface additiv
+- `EnemyDef.visual_scene: PackedScene` (optional)
+- `DinoDef.visual_scene: PackedScene` (optional)
+- `BossDef.visual_scene: PackedScene` (optional)
+- `*.visual_pivot_offset: Vector2` (HealthBar-Anchor-Korrektur)
+
+### Test-Suite
+- 25 Scripts, 339 Tests (von 326 → +13 Visual-Provider-Tests).
+
+---
+
+### Added
+- **ADR 0026:** WaveDef als Content-Resource — Wellen sind jetzt
+  data-driven. Designer und Modder können Wellen ändern ohne
+  Code-Touch.
+- `core/content/wave_def.gd` — neue Resource-Klasse mit zwei Modi:
+  - `is_default = true` (genau eine WaveDef): Curve-Default
+    (`base_spawn_rate`, `spawn_rate_per_wave`, `max_spawn_rate`)
+  - `target_wave_index > 0`: Override für genau diese Welle
+    (eigener `enemy_pool`, optional `boss_id`, `duration_sec`)
+- `core/content_loader.gd` — neuer Type `wave`
+  (`res://content/waves/`, mod-subpath `waves/`).
+- `content/waves/wave_default.tres` — Curve-Default 1:1 zu den bisher
+  hardcoded Konstanten (0.5/0.3/5.0).
+- `content/waves/wave_5_tyrannosaurus.tres` — Override Welle 5,
+  Pool {grunt; alpha; ptera} + Boss tyrannosaurus_prime.
+- `content/waves/wave_10_tyrannosaurus.tres` — Override Welle 10,
+  Pool {grunt; alpha; ptera; carno} + Boss.
+- `core/wave_spawner.gd` erweitert um:
+  - Public-API `get_wave_def_for(idx)` und `get_active_wave_def()`
+  - Resolver-Helper `_get_override_wave_def`, `_get_default_wave_def`
+  - Boss-Resolver `_resolve_boss_id_for_wave` (Override > Konstanten)
+  - `_spawn_rate_for_wave` und `_pool_for_wave` def-aware mit
+    Konstanten-Fallback (Backward-Kompatibilität)
+- `tests/unit/test_wave_def.gd` — 19 Tests (Discovery, Validate-Regeln,
+  Field-Loading).
+- `tests/unit/test_wave_spawner.gd` um 11 Resolver-Tests erweitert.
+- `tests/unit/test_content_loader.gd` um wave-Type-Check ergänzt.
+- locale/{de,en}.po um 6 wave.*-Keys erweitert.
+- BALANCE.csv um 3 Wave-Einträge erweitert (jetzt 16 total).
+- agents/memory/content-author/content-id-registry.md — wave-Section.
+- docs/ARCHITECTURE.md — neuer Pattern-Block „WaveDef-Resolver".
+- docs/CONTENT.md — neue Section „Wave-Spezifika" für content-author
+  und Modder.
+- agents/memory/mod-api-curator/public-api-surface.md — WaveDef-Schema
+  unter §3 Resource-Schemas.
+
+### Backward-Kompatibilität
+- Alle Konstanten (`BASE_SPAWN_RATE`, `BOSS_WAVE_INTERVAL`, …) bleiben
+  als Fallback im Code erhalten. Ohne `wave_default.tres` verhält sich
+  der Spawner exakt wie vor ADR 0026.
+- `_pool_for_wave`, `_spawn_rate_for_wave`, `_boss_for_wave` bleiben
+  als private Helper bestehen (Tests, die sie direkt aufrufen, laufen
+  weiter durch).
+
+### Public-API additiv
+- `WaveSpawner.get_wave_def_for(idx: int) -> WaveDef`
+- `WaveSpawner.get_active_wave_def() -> WaveDef`
+
+### Designer/Modder-Konsequenz
+- **Welle-Tuning ohne Code-Touch**: Spawn-Rate-Curve in
+  `wave_default.tres` editieren, Re-Import → neue Werte aktiv.
+- **Mod kann Welle X überschreiben**: `mod/content/waves/wave_<idx>.tres`
+  mit `target_wave_index = X` und `override_existing = true`.
+
+### Test-Suite
+- 24 Scripts, 326 Tests (alle grün — verifiziert lokal mit Godot 4.6).
+
+---
+
+### Added
+- **ADR 0025:** Boss-Spawn-Mechanik — Boss-Wellen alle 5 Wellen
+  spawnen `tyrannosaurus_prime` automatisch. Erstes In-Game-
+  Setpiece, Loop bekommt Pacing.
+- `core/boss/boss_mob.gd` + `.tscn` — generische BossMob-Scene,
+  analog Enemy-Mob aber mit eigenem Death-Pfad
+  (`EventBus.boss_defeated` statt `enemy_died`).
+  Groups: `&"enemy"` (Auto-Attack-Target) + `&"boss"` (Marker).
+- `core/components/health_component.gd` erweitert um
+  `@export var is_boss: bool` — unterdrückt `enemy_died`-Emission
+  bei Boss-Tod, damit BossMob `boss_defeated` selbst feuert.
+- `core/content/boss_def.gd` erweitert um Felder `speed`, `damage`,
+  `body_color`, `body_size`, `scene` (analog EnemyDef).
+- `content/bosses/tyrannosaurus_prime.tres` aktualisiert:
+  scene-Reference auf boss_mob.tscn + Visual/Movement-Werte.
+- `core/wave_spawner.gd` erweitert um:
+  - `BOSS_WAVE_INTERVAL = 5` (jede 5. Welle)
+  - `_is_boss_wave(idx)` + `_boss_for_wave(idx)` (Lookup-Hooks)
+  - `spawn_boss_at(boss_id, pos)` — Public-API, analog
+    `spawn_enemy_at`
+  - Hook in `_start_next_wave` → automatischer Boss-Spawn
+- `tests/unit/test_boss_mob.gd` — 11 Tests (Setup, Visuals,
+  Death-Pfad, boss_defeated-Signal mit run_time).
+- `tests/unit/test_wave_spawner.gd` um 5 Boss-Wave-Tests
+  erweitert (Interval, ID-Lookup, spawn_boss_at, Hook im
+  Wave-Start).
+
+### Pacing-Konsequenz
+- Welle 1–4: normale Enemy-Wellen (Pool-Curve aus ADR 0023).
+- Welle 5: Boss-Welle — `tyrannosaurus_prime` spawnt, normale
+  Enemies laufen weiter.
+- Welle 10/15/20: weitere Boss-Wellen (gleicher Boss in v0.0.7,
+  Boss-Variation = Backlog).
+
+### Test-Suite
+- 23 Scripts, 307 Tests, 605 Asserts — alle grün.
+
+### Added
+- **ADR 0024:** Visuelle Enemy-Differenzierung — Spieler erkennt
+  Enemy-Typen sofort am Look (statt nur am Verhalten).
+- `core/content/enemy_def.gd` — neue @export-Felder `body_color` (Color)
+  und `body_size` (Vector2) mit Defaults (rot, 16×16) für Backward-Kompat.
+- `core/enemy/enemy_mob.gd` — `_apply_visuals(def)` im setup-Pfad,
+  appliziert Color + Size + HealthBar-Offset.
+- `content/enemies/{pteranodon, raptor_alpha, armored_carnotaurus}.tres`
+  — alle drei mit unique Color + Size konfiguriert.
+- `tests/unit/test_enemy_mob.gd` um 5 Visual-Tests.
+
+### Color-Konvention
+- raptor_grunt: rot 16×16 (Default)
+- pteranodon: himmelblau 14×14 (klein, fragil)
+- raptor_alpha: dunkelrot 22×22 (mid-tier)
+- armored_carnotaurus: braungrau 28×28 (Tank)
+
+### Test-Suite
+- 22 Scripts, 291 Tests, 574 Asserts — alle grün.
+
+### Added
+- **ADR 0023:** Enemy-Variants + Boss-Resource (Stub) — Welt fühlt
+  sich nach Welle 3+ abwechslungsreicher an. Boss-Asset bereit für
+  Spawn-Mechanik-ADR.
+- `content/enemies/pteranodon.tres` — Flieger (18 HP / 6 DMG / 180 Speed)
+- `content/enemies/raptor_alpha.tres` — Mid-Tier (60 HP / 18 DMG / 140 Speed)
+- `content/enemies/armored_carnotaurus.tres` — Tank (150 HP / 25 DMG / 80 Speed)
+- `content/bosses/tyrannosaurus_prime.tres` — BossDef-Stub (800 HP /
+  50 currency reward). Spawn-Mechanik = Backlog.
+- `core/wave_spawner.gd` — Pool-Curve: Welle-skalierender Enemy-Pool.
+- BALANCE.csv um 4 Einträge erweitert (jetzt 13 total).
+- locale/{de,en}.po um 11 neue Translation-Keys.
+- agents/memory/lore-writer/tone-of-voice.md mit Enemy-Tooltip-Beispielen
+  und Boss-Texten.
+- `tests/unit/test_wave_spawner.gd` + `test_content_loader.gd` um
+  9 Pool-Curve- und Content-Tests.
+
+### Lore-Voice (neue Beispiele)
+- raptor_grunt: „Schnell, dünn gepanzert, kommt nie alleine."
+- pteranodon: „Stürzt von oben, schlägt von schräg, weg ist er."
+- raptor_alpha: „Erst der Anführer kommt. Der Schwarm hört zu."
+- armored_carnotaurus: „Schwer wie ein Bus. Treibt Bus-Fahrgäste zur Verzweiflung."
+- tyrannosaurus_prime: „Der Original-Schrecken. 12 Meter Wirbelsäule, schlechte Laune inklusive."
+
+### Test-Suite
+- 22 Scripts, 286 Tests, 565 Asserts — alle grün.
+
+---
+
+## [0.0.6] - 2026-05-06
+
+> **Phase 2.6 — Pick-Polish + Hit-Feedback.** Mutation-Pick-Phase ist
+> jetzt strategisch (rarity-gewichtet), Treffer haben sichtbares Feedback
+> (Floating-Damage-Numbers mit Crit-Visualisierung).
+>
+> 2 neue ADRs (0012 Damage-Numbers, 0022 Rarity-Picks), 17 neue Tests,
+> +943 Zeilen.
+
+### Added
+- **ADR 0012:** Damage-Number-VFX — befriedigendes Hit-Feedback. Bei
+  jedem Treffer fliegt ein Label vom Mob nach oben + fadet aus.
+- `core/ui/damage_number.gd` + `.tscn` — Floating-Label mit Tween-
+  Lifecycle, Self-Free, static `_format_amount` (1500 → "1.5K").
+  Crit-Visualisierung: gelb + größer + längere Animation.
+- `core/ui/health_bar.gd` erweitert um `spawn_damage_numbers`-Flag
+  (Default true) und `_spawn_damage_number()`-Hook.
+- `tests/unit/test_damage_number.gd` — 11 Tests (Format, Lifecycle,
+  HealthBar-Integration, Crit-Visualisierung).
+
+### Visuelle Konsequenz
+- Player schlägt Raptor → "15" fliegt vom Raptor nach oben
+- Mit triceratops_horns: "17" (15 × 1.15)
+- Crit-Treffer: "30" in gelb, größer, länger
+- Damage > 1000: "1.5K" kompakt
+
+### Test-Suite
+- 22 Scripts, 277 Tests, 518 Asserts — alle grün.
+
+### Added
+- **ADR 0022:** Rarity-gewichtete Mutation-Picks — Pick-Phase wählt
+  jetzt nach Rarity (Common 70 / Rare 25 / Epic 4.5 / Legendary 0.5).
+- `core/ui/mutation_pick_overlay.gd` erweitert um:
+  - `const RARITY_WEIGHTS` als Public-API
+  - `set_rng()`-Hook für deterministische Tests (analog CritModifier)
+  - `_weighted_pick_one()` mit Floating-Point-Rounding-Schutz
+  - Without-Replacement via Pool-Erase
+- `tests/unit/test_mutation_pick_overlay.gd` um 6 Weighting-Tests:
+  Konstanten, Determinismus, Pool-only-Common, Pool-only-Rare,
+  Without-Replacement, statistische Verteilung (100 Trials).
+
+### Strategische Konsequenz
+- Rare-Mutationen (spinosaur_sail, t_rex_jaw, pterodactyl_glide)
+  werden ~21% pro Pick angeboten — fühlen sich als „Big-Moment" an.
+- Common-Mutationen häufiger, aber synergistisch sinnvoll.
+
+### Test-Suite
+- 21 Scripts, 266 Tests, 505 Asserts — alle grün.
+
+---
+
+## [0.0.5] - 2026-05-06
+
+> **Phase 2.5 — Game-Feel-Layer und Build-Variation.** Spieler hat
+> während des Spielens HUD-Information (Wave/Timer/Mutationen),
+> entscheidet zwischen Wellen aktiv über Mutationen, und kann erstmals
+> echte Builds aufbauen — Damage, Speed oder Tank. Plus: Engine-Update
+> auf Godot 4.6.
+>
+> 2 neue ADRs (0020 HUD, 0021 Mutation-Pick), Engine-Update,
+> Mutation-Pool 3 → 7, 33 neue Tests, +1427 Zeilen.
+
+### Changed
+- **Godot-Engine-Version: 4.3 → 4.6**. project.godot, CI-Workflow,
+  README, ARCHITECTURE.md aktualisiert. Lokale Sandbox-Tests laufen
+  weiter mit 4.3 (kompatibel), das Repo verlangt aber 4.6.
+
+### Added
+- **Mutation-Pool ausgebaut: 3 → 7.** Pick-Phase hat jetzt echte
+  Build-Variation. Lore-writer hat Tooltips im Comic-paläontologischen
+  Stil geschrieben.
+- `content/mutations/velociraptor_dash.tres` (common, speed-build):
+  +20% Tempo, +10% Pickup-Radius
+- `content/mutations/t_rex_jaw.tres` (rare, big-bite-damage):
+  +25% Damage, +10% Crit-Damage
+- `content/mutations/stegosaurus_thagomizer.tres` (common, hybrid):
+  +15% Damage, +5% Crit-Chance
+- `content/mutations/pterodactyl_glide.tres` (rare, speed+pickup):
+  +25% Tempo, +15% Pickup-Radius
+- BALANCE.csv um 4 Einträge erweitert.
+- locale/{de,en}.po um 4 × 2 = 8 neue Translation-Keys.
+- agents/memory/lore-writer/tone-of-voice.md mit 7 Mutations-Beispielen
+  und Pattern-Doku.
+- `tests/unit/test_content_loader.gd` um Pool-Größe-Test (`>= 7`) und
+  Pool-Inklusion-Test (alle 4 neuen IDs vorhanden).
+- `tests/unit/test_mutation_pick_overlay.gd`: 2 Tests robust gegen
+  Pool-Wachstum gemacht.
+
+### Erste Build-Pfade
+- **Damage-Build**: triceratops_horns + spinosaur_sail + t_rex_jaw +
+  stegosaurus_thagomizer
+- **Speed-Build**: velociraptor_dash + pterodactyl_glide
+- **Tank-Build**: ankylosaur_plates
+
+### Test-Suite
+- 21 Scripts, 260 Tests, 487 Asserts — alle grün.
+
+### Added
+- **ADR 0021:** Mutation-Pick-Phase nach jeder Welle — Mutationen sind
+  endlich diegetisch! Wave-Ende → Pause → 3 zufällige nicht-gepickte
+  Mutationen → Spieler wählt → weiter mit aktiver Mutation.
+- `core/ui/mutation_pick_overlay.gd` + `.tscn` — CanvasLayer Layer 80,
+  PROCESS_MODE_WHEN_PAUSED. Public-API: `show_pick_phase`,
+  `hide_overlay`, `get_offered_ids`, `_on_pick` (Test-Hook).
+- `core/wave_spawner.gd` erweitert um:
+  - `@export var auto_advance: bool = true` (Default: Backward-Kompat)
+  - `request_next_wave()` — Public-API für externe Wave-Trigger
+- `core/run_scene/run.tscn` — MutationPickLayer als Child.
+- `tests/unit/test_mutation_pick_overlay.gd` — 12 Tests inkl.
+  Pick-Logic, Edge-Cases, Pause-Toggle, Cross-Mutation mit WaveSpawner.
+
+### Test-Suite
+- 21 Scripts, 258 Tests, 481 Asserts — alle grün.
+
+### Gotcha aufgedeckt
+- **Global-State-Leak via auto_advance**: MutationPickOverlay._ready
+  setzt das Flag global. Andere Suites müssen es in before_each
+  zurücksetzen.
+
+### Added
+- **ADR 0020:** HUD (Run-Timer, Wave-Counter, Mutation-Liste) — Spieler
+  hat jetzt Game-Information während des Spielens.
+- `core/ui/hud.gd` + `.tscn` — CanvasLayer-Overlay (Layer 50), drei
+  Labels: Wave (oben links), Timer (oben mitte), Mutations (oben rechts).
+  Listet auf run_started/ended, wave_started, mutations_changed; pollt
+  RunState.get_run_time im _process.
+- `core/run_scene/run.tscn` — HUDLayer als Child instantiiert,
+  GameOverLayer (Layer 100) liegt darüber.
+- `tests/unit/test_hud.gd` — 15 Tests (Format-Helper, Update-Methoden,
+  Visibility, EventBus-Hooks).
+
+### Was sichtbar wird
+- F5 zeigt jetzt zusätzlich:
+  - Wave 1 / Wave 2 / Wave 3 ×1.2 (oben links)
+  - 0:00 → 0:23 → 1:47 (oben mitte, läuft mit Run)
+  - (no mutations) oder Liste gepickter Mutationen (oben rechts)
+- HUD verschwindet beim Tod (GameOver-Overlay liegt darüber).
+
+### Test-Suite
+- 20 Scripts, 242 Tests, 455 Asserts — alle grün.
 
 ---
 

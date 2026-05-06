@@ -124,10 +124,6 @@ func load_save() -> bool:
 	var loaded: Dictionary = parsed
 	var found_version: int = int(loaded.get("schema_version", 0))
 
-	# Original-Version VOR Migration über Bus melden — Listener wollen das wissen.
-	if get_node_or_null("/root/EventBus") != null:
-		EventBus.save_loaded.emit(found_version)
-
 	# Migration-Pipeline
 	if found_version < CURRENT_SCHEMA_VERSION:
 		_backup_before_migration(found_version)
@@ -136,7 +132,14 @@ func load_save() -> bool:
 	# Save-Ref-Validation gegen ContentLoader
 	_validate_content_refs(loaded)
 
+	# _data MUSS gesetzt sein, bevor save_loaded feuert — Listener
+	# (z.B. MetaProgression) lesen via get_data() ihre Slots aus.
+	# `found_version` ist die ORIGINAL-Version (vor Migration), wie im
+	# Signal-Doc dokumentiert.
 	_data = loaded
+
+	if get_node_or_null("/root/EventBus") != null:
+		EventBus.save_loaded.emit(found_version)
 	return true
 
 

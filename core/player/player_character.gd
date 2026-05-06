@@ -87,8 +87,38 @@ func set_dino(dino: DinoDef) -> void:
 	# Initial-Stats aus DinoDef. Mutations sind standardmäßig leer beim Set;
 	# wenn welche gepickt sind, ruft _on_mutations_changed sie sowieso auf.
 	_apply_stats(get_aggregated_or_empty())
+	# Visual-Provider (ADR 0027)
+	_apply_visuals(dino)
 	# HP auf max setzen (initial Spawn)
 	health.reset_to_full()
+
+
+## Wendet das Visual-Setup aus DinoDef an. Wenn visual_scene gesetzt ist,
+## wird sie als Child instanziert und das ColorRect-Body versteckt.
+## Sonst bleibt der Body sichtbar (existing Scene-Default).
+func _apply_visuals(dino: DinoDef) -> void:
+	if dino.visual_scene == null:
+		# ColorRect bleibt sichtbar (Scene-Default)
+		var body_node := get_node_or_null("Body") as ColorRect
+		if body_node != null:
+			body_node.visible = true
+		return
+
+	# Visual-Provider-Mode: Scene instanzieren, Body verstecken
+	var existing := get_node_or_null("Visual")
+	if existing != null:
+		remove_child(existing)
+		existing.queue_free()
+	var inst := dino.visual_scene.instantiate()
+	if inst is Node:
+		inst.name = "Visual"
+		add_child(inst)
+	var body_node := get_node_or_null("Body") as ColorRect
+	if body_node != null:
+		body_node.visible = false
+	var bar := get_node_or_null("HealthBar") as Node2D
+	if bar != null and dino.visual_pivot_offset != Vector2.ZERO:
+		bar.position += dino.visual_pivot_offset
 
 
 func get_dino() -> DinoDef:

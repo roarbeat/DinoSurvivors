@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MutationDef" load_steps=2 format=3 uid="uid://dino_mut_velociraptor_dash"]
+
+[ext_resource type="Script" path="res://core/content/mutation_def.gd" id="1_mutdef"]
+
+[resource]
+script = ExtResource("1_mutdef")
+id = &"velociraptor_dash"
+display_name_key = &"mutation.velociraptor_dash.name"
+description_key = &"mutation.velociraptor_dash.tooltip"
+source_mod_id = &""
+override_existing = false
+rarity = &"common"
+stat_modifiers = {
+	&"move_speed_pct": 0.20,
+	&"pickup_radius_pct": 0.10
+}
+tags = [&"speed", &"mobility"]

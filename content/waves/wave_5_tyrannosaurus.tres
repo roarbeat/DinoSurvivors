@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WaveDef" load_steps=2 format=3 uid="uid://dino_wave_5_tyrannosaurus"]
+
+[ext_resource type="Script" path="res://core/content/wave_def.gd" id="1_wavedef"]
+
+[resource]
+script = ExtResource("1_wavedef")
+id = &"wave_5_tyrannosaurus"
+display_name_key = &"wave.5_tyrannosaurus.name"
+description_key = &"wave.5_tyrannosaurus.tooltip"
+source_mod_id = &""
+override_existing = false
+is_default = false
+target_wave_index = 5
+base_spawn_rate = 0.5
+spawn_rate_per_wave = 0.3
+max_spawn_rate = 5.0
+enemy_pool = [&"raptor_grunt", &"raptor_alpha", &"pteranodon"]
+boss_id = &"tyrannosaurus_prime"
+duration_sec = 0.0

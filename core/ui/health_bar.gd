@@ -23,6 +23,14 @@ extends Node2D
 		if fg != null:
 			fg.color = value
 
+## Wenn true: bei jedem damage_taken zusätzlich ein DamageNumber-VFX
+## spawnen (ADR 0012). Default true.
+@export var spawn_damage_numbers: bool = true
+
+
+# Damage-Number-Scene als preload für Spawns
+const DAMAGE_NUMBER_SCENE: PackedScene = preload("res://core/ui/damage_number.tscn")
+
 
 @onready var bg: ColorRect = $Background
 @onready var fg: ColorRect = $Foreground
@@ -98,8 +106,26 @@ func get_displayed_pct() -> float:
 # Internals
 # ---------------------------------------------------------------------------
 
-func _on_damage_taken(_info: DamageInfo, _hp_after: float) -> void:
+func _on_damage_taken(info: DamageInfo, _hp_after: float) -> void:
 	_update_visual()
+	if spawn_damage_numbers and info != null:
+		_spawn_damage_number(info)
+
+
+func _spawn_damage_number(info: DamageInfo) -> void:
+	if get_tree() == null:
+		return
+	var dn: DamageNumber = DAMAGE_NUMBER_SCENE.instantiate()
+	# Unter current_scene hängen, damit es nicht beim Mob-queue_free verschwindet.
+	var parent: Node = get_tree().current_scene
+	if parent == null:
+		# Test-Setup: Fallback auf eigenen Parent
+		parent = get_parent()
+	if parent == null:
+		dn.queue_free()
+		return
+	parent.add_child(dn)
+	dn.show_damage(info.amount, info.is_crit, global_position)
 
 
 func _on_healed(_amount: float, _hp_after: float) -> void:

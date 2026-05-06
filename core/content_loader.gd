@@ -35,6 +35,14 @@ const TYPE_CONFIG: Dictionary = {
 		"dir": "dinos",
 		"script_path": "res://core/content/dino_def.gd",
 	},
+	&"wave": {
+		"dir": "waves",
+		"script_path": "res://core/content/wave_def.gd",
+	},
+	&"sound": {
+		"dir": "sounds",
+		"script_path": "res://core/content/sound_def.gd",
+	},
 }
 
 const CORE_CONTENT_ROOT := "res://content/"

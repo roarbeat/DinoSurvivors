@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=3 format=3 uid="uid://dino_enemy_pteranodon"]
+
+[ext_resource type="Script" path="res://core/content/enemy_def.gd" id="1_enmdef"]
+[ext_resource type="PackedScene" uid="uid://dino_enemy_mob" path="res://core/enemy/enemy_mob.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_enmdef")
+id = &"pteranodon"
+display_name_key = &"enemy.pteranodon.name"
+description_key = &"enemy.pteranodon.tooltip"
+source_mod_id = &""
+override_existing = false
+max_health = 18.0
+speed = 180.0
+damage = 6.0
+xp_reward = 3
+scene = ExtResource("2_scene")
+body_color = Color(0.353, 0.722, 0.910, 1)
+body_size = Vector2(14, 14)

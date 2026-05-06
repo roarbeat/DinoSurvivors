@@ -85,6 +85,52 @@ func setup(def: EnemyDef, pos: Vector2) -> void:
 	# Dealer
 	dealer.default_source_id = def.id
 
+	# Visuals (ADR 0024) — Body-Color, -Size + HealthBar-Offset
+	_apply_visuals(def)
+
+
+func _apply_visuals(def: EnemyDef) -> void:
+	# Visual-Provider (ADR 0027): wenn visual_scene gesetzt, instanzieren
+	# und ColorRect verstecken. Sonst Color/Size-Modus (ADR 0024).
+	if def.visual_scene != null:
+		_spawn_visual_scene(def.visual_scene)
+		var body_node := get_node_or_null("Body") as ColorRect
+		if body_node != null:
+			body_node.visible = false
+		var bar := get_node_or_null("HealthBar") as Node2D
+		if bar != null:
+			bar.position = Vector2(0, -8.0) + def.visual_pivot_offset
+		return
+
+	# Fallback: ColorRect-Mode
+	var body_node := get_node_or_null("Body") as ColorRect
+	if body_node != null:
+		body_node.visible = true
+		body_node.color = def.body_color
+		var half := def.body_size * 0.5
+		body_node.offset_left = -half.x
+		body_node.offset_top = -half.y
+		body_node.offset_right = half.x
+		body_node.offset_bottom = half.y
+
+	var bar := get_node_or_null("HealthBar") as Node2D
+	if bar != null:
+		bar.position.y = -(def.body_size.y * 0.5) - 8.0
+
+
+## Instanziert die Visual-Scene als Child unter dem Mob. Existierende
+## Visual-Instanzen werden vorher entfernt (Idempotenz für Resetup).
+func _spawn_visual_scene(scene: PackedScene) -> void:
+	# Vorhandene Visual-Instanz aufräumen
+	var existing := get_node_or_null("Visual")
+	if existing != null:
+		remove_child(existing)
+		existing.queue_free()
+	var inst := scene.instantiate()
+	if inst is Node:
+		inst.name = "Visual"
+		add_child(inst)
+
 
 func get_def() -> EnemyDef:
 	return _def

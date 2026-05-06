@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://dino_run_camera"]
+
+[ext_resource type="Script" path="res://core/world/run_camera.gd" id="1_camera"]
+
+[node name="RunCamera" type="Camera2D"]
+script = ExtResource("1_camera")
+zoom = Vector2(2, 2)
+follow_smoothing = 5.0
+pixel_snap = true
+enable_limits = false

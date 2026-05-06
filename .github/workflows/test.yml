@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 10
 
     env:
-      GODOT_VERSION: "4.3-stable"
+      GODOT_VERSION: "4.6-stable"
       GODOT_PLATFORM: "linux.x86_64"
 
     steps:

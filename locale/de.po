@@ -29,6 +29,30 @@ msgstr "Ankylosaurus-Panzerung"
 msgid "mutation.ankylosaur_plates.tooltip"
 msgstr "Schwer wie ein Tresor, weniger einladend. (+20% Rüstung, +15% max HP)"
 
+msgid "mutation.velociraptor_dash.name"
+msgstr "Velociraptor-Dash"
+
+msgid "mutation.velociraptor_dash.tooltip"
+msgstr "Schneller als der Verstand. Schneller als die Beute. (+20% Tempo, +10% Aufnahme-Radius)"
+
+msgid "mutation.t_rex_jaw.name"
+msgstr "T-Rex-Kiefer"
+
+msgid "mutation.t_rex_jaw.tooltip"
+msgstr "Klein im Arm, groß im Mund. (+25% Schaden, +10% Krit-Schaden)"
+
+msgid "mutation.stegosaurus_thagomizer.name"
+msgstr "Stegosaurus-Thagomizer"
+
+msgid "mutation.stegosaurus_thagomizer.tooltip"
+msgstr "Vier Spitzen, eine Botschaft. Du bist die Botschaft. (+15% Schaden, +5% Krit-Chance)"
+
+msgid "mutation.pterodactyl_glide.name"
+msgstr "Pterodaktylus-Gleitflug"
+
+msgid "mutation.pterodactyl_glide.tooltip"
+msgstr "Wer fliegt, wird seltener gebissen. (+25% Tempo, +15% Aufnahme-Radius)"
+
 # --- Enemies ---
 
 msgid "enemy.raptor_grunt.name"
@@ -36,6 +60,97 @@ msgstr "Velociraptor (Schwarm)"
 
 msgid "enemy.raptor_grunt.tooltip"
 msgstr "Schnell, dünn gepanzert, kommt nie alleine."
+
+msgid "enemy.pteranodon.name"
+msgstr "Pteranodon"
+
+msgid "enemy.pteranodon.tooltip"
+msgstr "Stürzt von oben, schlägt von schräg, weg ist er."
+
+msgid "enemy.raptor_alpha.name"
+msgstr "Velociraptor (Alpha)"
+
+msgid "enemy.raptor_alpha.tooltip"
+msgstr "Erst der Anführer kommt. Der Schwarm hört zu."
+
+msgid "enemy.armored_carnotaurus.name"
+msgstr "Carnotaurus (Gepanzert)"
+
+msgid "enemy.armored_carnotaurus.tooltip"
+msgstr "Schwer wie ein Bus. Treibt Bus-Fahrgäste zur Verzweiflung."
+
+msgid "boss.tyrannosaurus_prime.name"
+msgstr "Tyrannosaurus Prime"
+
+msgid "boss.tyrannosaurus_prime.tooltip"
+msgstr "Der Original-Schrecken. 12 Meter Wirbelsäule, schlechte Laune inklusive."
+
+msgid "boss.tyrannosaurus_prime.intro"
+msgstr "BOSS! TYRANNOSAURUS PRIME ERWACHT!"
+
+msgid "boss.tyrannosaurus_prime.phase_mid"
+msgstr "T-PRIME: GEREIZT"
+
+msgid "boss.tyrannosaurus_prime.phase_rage"
+msgstr "T-PRIME: WAHNSINN!"
+
+# --- Sounds (ADR 0028) ---
+
+msgid "sfx.enemy_died.name"
+msgstr "Enemy-Tod"
+
+msgid "sfx.enemy_died.tooltip"
+msgstr "Schwarm-Gegner stirbt — kurzer Knack-Sound."
+
+msgid "sfx.boss_defeated.name"
+msgstr "Boss besiegt"
+
+msgid "sfx.boss_defeated.tooltip"
+msgstr "Boss fällt — laut, finalisierend, leicht hallend."
+
+msgid "sfx.player_damaged.name"
+msgstr "Player getroffen"
+
+msgid "sfx.player_damaged.tooltip"
+msgstr "Player nimmt Schaden — Grunzer + Hit-Impact."
+
+msgid "sfx.player_died.name"
+msgstr "Player stirbt"
+
+msgid "sfx.player_died.tooltip"
+msgstr "Game-Over-Sting — Run ist vorbei."
+
+msgid "sfx.mutation_picked.name"
+msgstr "Mutation gewählt"
+
+msgid "sfx.mutation_picked.tooltip"
+msgstr "Mutation-Confirm — kurzer positiver Sting."
+
+msgid "sfx.wave_started.name"
+msgstr "Welle beginnt"
+
+msgid "sfx.wave_started.tooltip"
+msgstr "Wave-Incoming — leiser Trommel-Build-up."
+
+# --- Waves (ADR 0026) ---
+
+msgid "wave.default.name"
+msgstr "Standard-Welle"
+
+msgid "wave.default.tooltip"
+msgstr "Der Default-Spawn-Rhythmus. Steigt mit jeder Welle an."
+
+msgid "wave.5_tyrannosaurus.name"
+msgstr "Welle 5 — Tyrannosaurus erscheint"
+
+msgid "wave.5_tyrannosaurus.tooltip"
+msgstr "Erstes Aufeinandertreffen mit dem Tyrannosaurus Prime."
+
+msgid "wave.10_tyrannosaurus.name"
+msgstr "Welle 10 — Tyrannosaurus kehrt zurück"
+
+msgid "wave.10_tyrannosaurus.tooltip"
+msgstr "Der Tyrannosaurus ist wütender geworden — und der Schwarm größer."
 
 # --- Dinos ---
 

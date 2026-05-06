@@ -14,6 +14,13 @@ extends ContentItem
 ## Player-Controller-Scene. Bleibt null bis Combat-System steht.
 @export var character_scene: PackedScene
 
+## Visual-Provider (ADR 0027). Optionale PackedScene, die statt der
+## ColorRect-Body instanziert wird. Wenn null, bleibt ColorRect-Mode.
+@export var visual_scene: PackedScene
+
+## Pivot-Offset für die HealthBar relativ zum Sprite-Pivot.
+@export var visual_pivot_offset: Vector2 = Vector2.ZERO
+
 
 func validate() -> String:
 	var base := super.validate()

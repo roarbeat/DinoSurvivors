@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MutationDef" load_steps=2 format=3 uid="uid://dino_mut_t_rex_jaw"]
+
+[ext_resource type="Script" path="res://core/content/mutation_def.gd" id="1_mutdef"]
+
+[resource]
+script = ExtResource("1_mutdef")
+id = &"t_rex_jaw"
+display_name_key = &"mutation.t_rex_jaw.name"
+description_key = &"mutation.t_rex_jaw.tooltip"
+source_mod_id = &""
+override_existing = false
+rarity = &"rare"
+stat_modifiers = {
+	&"damage_pct": 0.25,
+	&"crit_damage_pct": 0.10
+}
+tags = [&"damage", &"jaw", &"finisher"]

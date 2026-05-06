@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SoundDef" load_steps=2 format=3 uid="uid://dino_sfx_player_died"]
+
+[ext_resource type="Script" path="res://core/content/sound_def.gd" id="1_sounddef"]
+
+[resource]
+script = ExtResource("1_sounddef")
+id = &"sfx_player_died"
+display_name_key = &"sfx.player_died.name"
+description_key = &"sfx.player_died.tooltip"
+source_mod_id = &""
+override_existing = false
+volume_db = 0.0
+pitch_random_range = 0.0

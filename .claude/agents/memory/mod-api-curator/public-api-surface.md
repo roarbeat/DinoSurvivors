@@ -25,6 +25,7 @@ Stabilität: Renames + Parameter-Änderungen sind Mod-Breaking.
 - `wave_cleared(wave_index: int)`
 - `boss_spawned(boss_id: StringName, position: Vector2)`
 - `boss_defeated(boss_id: StringName, run_time: float)`
+- `boss_phase_changed(boss_id: StringName, phase_index: int, label_key: StringName)` (ADR 0029)
 
 ### Run-Lifecycle
 - `run_started(dino_id: StringName)`
@@ -54,7 +55,7 @@ Stabilität: Renames + Parameter-Änderungen sind Mod-Breaking.
 ### Content / Boot
 - `content_loaded(type_count: int, item_count: int)`
 
-**Insgesamt: 21 Signals** — synchron mit `tests/unit/test_event_bus.gd::EXPECTED_SIGNALS`.
+**Insgesamt: 22 Signals** — synchron mit `tests/unit/test_event_bus.gd::EXPECTED_SIGNALS`.
 
 ---
 
@@ -103,14 +104,25 @@ speed               : float (≥0)
 damage              : float
 xp_reward           : int
 scene               : PackedScene    # optional
+body_color          : Color           # ADR 0024 — Visual-Differenzierung
+body_size           : Vector2         # ADR 0024
+visual_scene        : PackedScene    # optional, ADR 0027 — Sprite/Custom-Visual
+visual_pivot_offset : Vector2         # ADR 0027 — HealthBar-Anchor-Korrektur
 ```
 
-**BossDef extends ContentItem (Stub):**
+**BossDef extends ContentItem:**
 ```
 max_health          : float (>0)
 phases              : Array[Dictionary]    # Schema folgt
 intro_text_key      : StringName
 reward_currency_amount : int (≥0)
+scene               : PackedScene          # ADR 0025 — BossMob-Scene
+speed               : float                # ADR 0025 — Movement-Speed
+damage              : float                # ADR 0025 — Touch-Damage
+body_color          : Color                # ADR 0024
+body_size           : Vector2              # ADR 0024
+visual_scene        : PackedScene         # optional, ADR 0027
+visual_pivot_offset : Vector2              # ADR 0027
 ```
 
 **DinoDef extends ContentItem:**
@@ -120,8 +132,176 @@ base_speed          : float (≥0)
 base_damage         : float
 base_attack_rate    : float (>0)
 pickup_radius       : float (≥0)
-character_scene     : PackedScene  # optional
+character_scene     : PackedScene    # optional
+visual_scene        : PackedScene    # optional, ADR 0027
+visual_pivot_offset : Vector2         # ADR 0027
 ```
+
+**WaveDef extends ContentItem (ADR 0026):**
+```
+is_default          : bool             # genau eine WaveDef trägt das Flag
+target_wave_index   : int (≥0)         # 0 = Default-Modus; >0 = Override für genau diese Welle
+base_spawn_rate     : float (≥0)       # Welle-1-Rate in Spawns/s (relevant wenn is_default=true)
+spawn_rate_per_wave : float (≥0)       # +pro Welle
+max_spawn_rate      : float (≥base)    # Cap
+enemy_pool          : Array[StringName] # Default-Pool oder Override-Pool
+boss_id             : StringName       # nur sinnvoll bei target_wave_index>0
+duration_sec        : float (≥0)       # 0 = WaveSpawner.DEFAULT_WAVE_DURATION_SEC nutzen
+```
+
+Validate-Regeln:
+- `is_default=true` und `target_wave_index>0` schließen sich gegenseitig aus
+- weder `is_default` noch `target_wave_index>0` gesetzt → invalid
+- `boss_id` darf nur auf Override-WaveDefs gesetzt sein
+
+**SoundDef extends ContentItem (ADR 0028):**
+```
+stream              : AudioStream      # null = no-op (v1-Default)
+volume_db           : float            # Volume-Offset, 0.0 = unverändert
+pitch_random_range  : float (≥0, ≤1)   # ±-Range pro Playback (Variabilität)
+```
+
+Validate-Regeln:
+- `pitch_random_range` darf nicht negativ sein und nicht > 1.0
+
+**BossPhase Resource (ADR 0029) — Sub-Resource in BossDef.phases:**
+```
+hp_threshold        : float (0.0–1.0)   # absteigend sortiert in BossDef.phases
+speed_multiplier    : float (>0)        # 1.0 = base
+damage_multiplier   : float (≥0)        # 1.0 = base
+color_tint          : Color             # multipliziert auf body.color / Visual.modulate
+label_key           : StringName        # optionaler i18n-Key für Phase-Banner
+```
+
+Validate-Regeln:
+- `hp_threshold` muss in [0.0, 1.0] sein
+- `speed_multiplier` muss > 0 sein
+- `damage_multiplier` darf nicht negativ sein
+- `BossDef.phases` muss absteigend nach `hp_threshold` sortiert sein
+  (sonst BossDef.validate() Fehler)
+
+Phase-Resolver-Verhalten:
+- Aktive Phase = letzte Phase mit `hp_threshold >= current_hp_pct`
+- MONOTON: Index steigt nur, kein Rückfall bei Heal
+- Bei Phase-Wechsel feuert `EventBus.boss_phase_changed`
+
+---
+
+## 3.5. SfxBus-API (`core/audio/sfx_bus.gd`, ADR 0028)
+
+```gdscript
+# Konstanten
+const POOL_SIZE: int = 8
+const SIGNAL_TO_SOUND: Dictionary  # signal_name → sound_id (6 Default-Mappings)
+
+# Public-API
+SfxBus.play(sound_id: StringName) -> bool   # liefert false bei no-op (mute/unknown/null-stream)
+SfxBus.set_muted(muted: bool) -> void
+SfxBus.is_muted() -> bool
+SfxBus.pool_size() -> int
+SfxBus.get_signal_mapping(signal_name: StringName) -> StringName
+SfxBus.add_signal_mapping(signal_name: StringName, sound_id: StringName) -> void
+```
+
+Default-Subscriptions (intern, nicht überschreibbar in v1):
+- `EventBus.enemy_died`      → `sfx_enemy_died`
+- `EventBus.boss_defeated`   → `sfx_boss_defeated`
+- `EventBus.player_damaged`  → `sfx_player_damaged`
+- `EventBus.player_died`     → `sfx_player_died`
+- `EventBus.mutation_picked` → `sfx_mutation_picked`
+- `EventBus.wave_started`    → `sfx_wave_started`
+
+Mods können via `add_signal_mapping(signal_name, sound_id)` zusätzliche
+Mappings für eigene Signals registrieren.
+
+---
+
+## 3.7. Palette + IsoWorld (`core/art/palette.gd`, `core/world/iso_world.gd`, ADR 0031)
+
+```gdscript
+# Palette — Single-Source-of-Truth-Color-Konstanten
+class_name Palette extends RefCounted
+
+# Stable Color-Konstanten (16 total): BG_CHARCOAL, GRASS_LIGHT/MID/DARK,
+# GRASS_EDGE, DIRT_PATH, DIRT_SIDE_TOP/BOTTOM, PLAYER_BODY/ACCENT,
+# COIN_GOLD/HIGHLIGHT, CRYSTAL_GREEN, FLOWER_RED/YELLOW/LILA
+
+static func random_grass(rng: RandomNumberGenerator = null) -> Color
+```
+
+```gdscript
+# IsoWorld — Tile-Map-Skelett, public-API stabil über v1+
+class_name IsoWorld extends Node2D
+
+const TILE_SIZE: Vector2i = Vector2i(64, 32)
+
+# Pure-Function-API (testbar ohne Instanz)
+static func tile_to_iso(tile: Vector2i, tile_size = TILE_SIZE) -> Vector2
+static func iso_to_tile(screen: Vector2, tile_size = TILE_SIZE) -> Vector2i
+
+# Instance-API
+@export var grid_size: Vector2i = Vector2i(8, 8)
+@export var path_row: int = 4
+@export var path_col: int = 4
+
+func world_size() -> Vector2
+func is_path_tile(tile: Vector2i) -> bool
+```
+
+Mods können IsoWorld via Scene-Override unter
+`user://mods/<mod>/core/world/iso_world.tscn` ersetzen — die Public-
+API muss aber stabil bleiben (sonst breaks RunScene).
+
+```gdscript
+# RunCamera (ADR 0032) — Camera2D mit Player-Follow + Smooth-Lerp
+class_name RunCamera extends Camera2D
+
+@export var target: Node2D
+@export var follow_smoothing: float = 5.0
+@export var pixel_snap: bool = true
+@export var enable_limits: bool = false
+@export var bound_min: Vector2
+@export var bound_max: Vector2
+
+func set_target(t: Node2D) -> void
+func snap_to_target() -> void
+func set_follow_smoothing(value: float) -> void
+func set_bounds(min_pos: Vector2, max_pos: Vector2) -> void
+
+# Pure Function (Test-Hook)
+static func compute_next_position(
+    current: Vector2, target_pos: Vector2,
+    smoothing: float, delta: float, pixel_snap_enabled: bool = true
+) -> Vector2
+```
+
+---
+
+## 3.6. MetaProgression-API (`core/meta_progression.gd`, ADR 0030)
+
+```gdscript
+const DEFAULT_CURRENCY: StringName = &"amber"
+const SAVE_KEY: String = "meta_progression"
+
+# Public-API
+MetaProgression.get_currency(id: StringName = DEFAULT_CURRENCY) -> int
+MetaProgression.add_currency(id: StringName, amount: int) -> int   # neuer Wert
+MetaProgression.set_currency(id: StringName, value: int) -> void
+MetaProgression.list_currencies() -> Dictionary  # {id: int}
+MetaProgression.reset() -> void   # Test-Hook + New-Game-Reset
+```
+
+EventBus-Hooks (intern):
+- `EventBus.boss_defeated` → addiert `BossDef.reward_currency_amount` zu `amber`
+- `EventBus.save_requested` → schreibt Snapshot in `SaveSystem.set_field("meta_progression", ...)`
+- `EventBus.save_loaded` → liest Snapshot aus `SaveSystem.get_data().meta_progression`
+
+Currency-Eigenschaften:
+- Lower-Cap bei 0 (keine negativen Werte)
+- `add_currency(_, 0)` ist no-op (kein Signal)
+- Beliebige Currency-IDs erlaubt (Mods können eigene anlegen)
+
+EventBus.currency_changed feuert nur wenn der Wert sich ändert.
 
 ---
 

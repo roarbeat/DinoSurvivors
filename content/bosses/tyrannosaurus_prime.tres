@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="BossDef" load_steps=6 format=3 uid="uid://dino_boss_tyrannosaurus_prime"]
+
+[ext_resource type="Script" path="res://core/content/boss_def.gd" id="1_bossdef"]
+[ext_resource type="PackedScene" uid="uid://dino_boss_mob" path="res://core/boss/boss_mob.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://core/content/boss_phase.gd" id="3_phase"]
+
+[sub_resource type="Resource" id="phase_spawn"]
+script = ExtResource("3_phase")
+hp_threshold = 1.0
+speed_multiplier = 1.0
+damage_multiplier = 1.0
+color_tint = Color(1, 1, 1, 1)
+label_key = &""
+
+[sub_resource type="Resource" id="phase_mid"]
+script = ExtResource("3_phase")
+hp_threshold = 0.66
+speed_multiplier = 1.2
+damage_multiplier = 1.15
+color_tint = Color(1, 0.85, 0.85, 1)
+label_key = &"boss.tyrannosaurus_prime.phase_mid"
+
+[sub_resource type="Resource" id="phase_rage"]
+script = ExtResource("3_phase")
+hp_threshold = 0.33
+speed_multiplier = 1.5
+damage_multiplier = 1.4
+color_tint = Color(1, 0.6, 0.6, 1)
+label_key = &"boss.tyrannosaurus_prime.phase_rage"
+
+[resource]
+script = ExtResource("1_bossdef")
+id = &"tyrannosaurus_prime"
+display_name_key = &"boss.tyrannosaurus_prime.name"
+description_key = &"boss.tyrannosaurus_prime.tooltip"
+source_mod_id = &""
+override_existing = false
+max_health = 800.0
+phases = [SubResource("phase_spawn"), SubResource("phase_mid"), SubResource("phase_rage")]
+intro_text_key = &"boss.tyrannosaurus_prime.intro"
+reward_currency_amount = 50
+scene = ExtResource("2_scene")
+speed = 80.0
+damage = 40.0
+body_color = Color(0.227, 0.094, 0.314, 1)
+body_size = Vector2(40, 40)

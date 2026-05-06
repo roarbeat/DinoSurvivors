@@ -20,6 +20,11 @@ extends Node
 
 const DEFAULT_WAVE_DURATION_SEC := 30.0
 
+## Auto-Advance: nach wave_cleared automatisch die nächste Welle starten?
+## Default true (Backward-Kompatibilität). Mutation-Pick-Overlay setzt
+## das beim _ready auf false und triggert request_next_wave() nach Pick.
+@export var auto_advance: bool = true
+
 # ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
@@ -70,6 +75,18 @@ func is_active() -> bool:
 	return _active
 
 
+## Triggert die nächste Welle. Wird vom Mutation-Pick-Overlay nach Pick
+## gerufen, wenn auto_advance=false. No-op wenn Run nicht aktiv oder
+## Wave bereits läuft (durch laufenden Timer).
+func request_next_wave() -> void:
+	if not _active:
+		return
+	# Falls noch ein Welle-Timer läuft (Spieler clearen vor Ablauf):
+	# stoppen, neue Welle starten.
+	_timer.stop()
+	_start_next_wave()
+
+
 ## Aktueller Wave-Index. 0 wenn idle.
 func current_wave() -> int:
 	return _current_wave
@@ -95,6 +112,9 @@ const BASE_SPAWN_RATE: float = 0.5         # Spawns/s in Welle 1
 const SPAWN_RATE_PER_WAVE: float = 0.3     # +pro Welle
 const MAX_SPAWN_RATE: float = 5.0          # Cap
 const SPAWN_RADIUS_FROM_PLAYER: float = 400.0
+
+# Boss-Wellen (ADR 0025) — alle BOSS_WAVE_INTERVAL Wellen erscheint ein Boss
+const BOSS_WAVE_INTERVAL: int = 5
 
 var _spawn_root: Node = null
 
@@ -167,12 +187,24 @@ func _start_next_wave() -> void:
 	_current_wave += 1
 	if get_node_or_null("/root/RunState") != null:
 		RunState._set_current_wave(_current_wave)
-	_timer.start(_wave_duration)
+	# WaveDef-Lookup (ADR 0026) — falls Override-WaveDef die duration setzt
+	var def := get_wave_def_for(_current_wave)
+	var duration: float = _wave_duration
+	if def != null and def.duration_sec > 0.0:
+		duration = def.duration_sec
+	_timer.start(duration)
 	# Auto-Spawn-Rate für diese Welle setzen
 	_current_spawn_interval = 1.0 / _spawn_rate_for_wave(_current_wave)
 	_auto_spawn_timer = _current_spawn_interval
 	if get_node_or_null("/root/EventBus") != null:
 		EventBus.wave_started.emit(_current_wave, _difficulty_for_wave(_current_wave))
+
+	# Boss-Welle? (ADR 0025/0026)
+	# Resolver: WaveDef.boss_id (Override) → _is_boss_wave + _boss_for_wave (Konstanten-Fallback)
+	var boss_id: StringName = _resolve_boss_id_for_wave(_current_wave)
+	if String(boss_id) != "" and _spawn_root != null:
+		var pos: Vector2 = _random_spawn_position()
+		spawn_boss_at(boss_id, pos)
 
 
 func _on_wave_timeout() -> void:
@@ -180,8 +212,10 @@ func _on_wave_timeout() -> void:
 		return
 	if get_node_or_null("/root/EventBus") != null:
 		EventBus.wave_cleared.emit(_current_wave)
-	# Sofort nächste Welle starten — solange Run noch läuft.
-	if _active:
+	# Auto-Advance: direkt nächste Welle starten. Wer Pick-Phase
+	# einschiebt, setzt auto_advance=false und ruft request_next_wave
+	# nach dem Pick.
+	if _active and auto_advance:
 		_start_next_wave()
 
 
@@ -221,16 +255,104 @@ func _do_auto_spawn() -> EnemyMob:
 
 
 ## Spawn-Rate für eine Wave-Index (Wellen sind 1-basiert).
-## Linear, geclampt auf MAX_SPAWN_RATE.
+## Linear, geclampt auf max_spawn_rate.
+##
+## Resolver (ADR 0026): WaveDef-Default (is_default=true) → Konstanten-Fallback.
 func _spawn_rate_for_wave(idx: int) -> float:
-	var rate: float = BASE_SPAWN_RATE + SPAWN_RATE_PER_WAVE * float(max(0, idx - 1))
-	return min(rate, MAX_SPAWN_RATE)
+	var def := _get_default_wave_def()
+	if def != null:
+		var def_rate: float = def.base_spawn_rate + def.spawn_rate_per_wave * float(max(0, idx - 1))
+		return min(def_rate, def.max_spawn_rate)
+	# Fallback (Backward-Kompat — keine Default-WaveDef vorhanden)
+	var const_rate: float = BASE_SPAWN_RATE + SPAWN_RATE_PER_WAVE * float(max(0, idx - 1))
+	return min(const_rate, MAX_SPAWN_RATE)
 
 
-## Welcher Enemy-Typ für diese Welle? v1: nur raptor_grunt.
-## Ersetzt durch WaveDef-Lookup mit eigenem ADR.
-func _enemy_id_for_wave(_idx: int) -> StringName:
-	return &"raptor_grunt"
+## Pool-Curve nach Welle (ADR 0023 / ADR 0026).
+##
+## Resolver:
+##   1. Override-WaveDef für diesen Index mit non-empty enemy_pool → return
+##   2. Default-WaveDef mit non-empty enemy_pool → return
+##   3. Konstanten-Fallback (ADR 0023 hardcoded Tiers)
+func _pool_for_wave(idx: int) -> Array[StringName]:
+	var override_def := _get_override_wave_def(idx)
+	if override_def != null and not override_def.enemy_pool.is_empty():
+		return override_def.enemy_pool.duplicate()
+	var default_def := _get_default_wave_def()
+	if default_def != null and not default_def.enemy_pool.is_empty():
+		return default_def.enemy_pool.duplicate()
+	# Konstanten-Fallback (ADR 0023)
+	if idx <= 2:
+		return [&"raptor_grunt"]
+	if idx <= 5:
+		return [&"raptor_grunt", &"raptor_alpha"]
+	if idx <= 10:
+		return [&"raptor_grunt", &"raptor_alpha", &"pteranodon"]
+	return [&"raptor_grunt", &"raptor_alpha", &"pteranodon", &"armored_carnotaurus"]
+
+
+## Wählt einen zufälligen Enemy-Typ aus dem Pool für diese Welle.
+## v1 uniform — Rarity-gewichtetes Spawn ist eigenes ADR.
+func _enemy_id_for_wave(idx: int) -> StringName:
+	var pool := _pool_for_wave(idx)
+	if pool.is_empty():
+		return &"raptor_grunt"
+	var i := randi() % pool.size()
+	return pool[i]
+
+
+## Resolver für Boss-ID einer Welle (ADR 0026).
+## Override-WaveDef.boss_id hat Vorrang vor Konstanten-mod-5-Hook.
+func _resolve_boss_id_for_wave(idx: int) -> StringName:
+	var override_def := _get_override_wave_def(idx)
+	if override_def != null and override_def.boss_id != &"":
+		return override_def.boss_id
+	if _is_boss_wave(idx):
+		return _boss_for_wave(idx)
+	return &""
+
+
+## Spawnt einen Boss an `position` (ADR 0025). Liefert die BossMob-Instanz.
+##
+## null wenn:
+##   - kein spawn_root gesetzt
+##   - unbekannte boss_id
+##   - BossDef hat keine scene
+func spawn_boss_at(boss_id: StringName, position: Vector2) -> BossMob:
+	if _spawn_root == null:
+		push_warning("WaveSpawner.spawn_boss_at: kein spawn_root gesetzt")
+		return null
+	if get_node_or_null("/root/ContentLoader") == null:
+		return null
+	var def: BossDef = ContentLoader.get_or_null(&"boss", boss_id) as BossDef
+	if def == null:
+		push_warning("WaveSpawner.spawn_boss_at: unbekannter Boss '%s'" % boss_id)
+		return null
+	if def.scene == null:
+		push_warning("WaveSpawner.spawn_boss_at: BossDef '%s' hat keine scene" % boss_id)
+		return null
+
+	var boss: BossMob = def.scene.instantiate() as BossMob
+	if boss == null:
+		push_error("WaveSpawner.spawn_boss_at: Scene ergibt keinen BossMob")
+		return null
+	_spawn_root.add_child(boss)
+	boss.setup(def, position)
+
+	# EventBus.boss_spawned (Signal existiert seit ADR 0001)
+	if get_node_or_null("/root/EventBus") != null:
+		EventBus.boss_spawned.emit(boss_id, position)
+	return boss
+
+
+## true wenn diese Welle eine Boss-Welle ist (alle BOSS_WAVE_INTERVAL Wellen).
+func _is_boss_wave(idx: int) -> bool:
+	return idx > 0 and idx % BOSS_WAVE_INTERVAL == 0
+
+
+## Welcher Boss spawnt in dieser Boss-Welle? v1: nur tyrannosaurus_prime.
+func _boss_for_wave(_idx: int) -> StringName:
+	return &"tyrannosaurus_prime"
 
 
 ## Zufällige Spawn-Position auf Kreis um den nähesten Player.
@@ -243,3 +365,49 @@ func _random_spawn_position() -> Vector2:
 			break
 	var angle: float = randf() * TAU
 	return center + Vector2.RIGHT.rotated(angle) * SPAWN_RADIUS_FROM_PLAYER
+
+
+# ---------------------------------------------------------------------------
+# WaveDef-Resolver (ADR 0026)
+# ---------------------------------------------------------------------------
+
+## Liefert die WaveDef für diesen Wave-Index. Resolver-Reihenfolge:
+##   1. Override-WaveDef (target_wave_index == idx)
+##   2. Default-WaveDef (is_default == true)
+##   3. null
+##
+## Public-API für Game-Code, UI (Wave-Banner) und Tests.
+func get_wave_def_for(idx: int) -> WaveDef:
+	var override_def := _get_override_wave_def(idx)
+	if override_def != null:
+		return override_def
+	return _get_default_wave_def()
+
+
+## Liefert die aktuelle WaveDef (für current_wave()).
+func get_active_wave_def() -> WaveDef:
+	return get_wave_def_for(_current_wave)
+
+
+## Override-WaveDef für genau diesen Index. null wenn keine existiert.
+func _get_override_wave_def(idx: int) -> WaveDef:
+	if get_node_or_null("/root/ContentLoader") == null:
+		return null
+	var all: Array = ContentLoader.get_all(&"wave")
+	for item in all:
+		var wd: WaveDef = item as WaveDef
+		if wd != null and wd.target_wave_index == idx:
+			return wd
+	return null
+
+
+## Default-WaveDef (is_default=true). null wenn keine existiert.
+func _get_default_wave_def() -> WaveDef:
+	if get_node_or_null("/root/ContentLoader") == null:
+		return null
+	var all: Array = ContentLoader.get_all(&"wave")
+	for item in all:
+		var wd: WaveDef = item as WaveDef
+		if wd != null and wd.is_default:
+			return wd
+	return null

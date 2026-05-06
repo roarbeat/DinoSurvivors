@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SoundDef" load_steps=2 format=3 uid="uid://dino_sfx_boss_defeated"]
+
+[ext_resource type="Script" path="res://core/content/sound_def.gd" id="1_sounddef"]
+
+[resource]
+script = ExtResource("1_sounddef")
+id = &"sfx_boss_defeated"
+display_name_key = &"sfx.boss_defeated.name"
+description_key = &"sfx.boss_defeated.tooltip"
+source_mod_id = &""
+override_existing = false
+volume_db = 2.0
+pitch_random_range = 0.0

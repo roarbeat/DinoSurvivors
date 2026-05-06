@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MutationDef" load_steps=2 format=3 uid="uid://dino_mut_stegosaurus_thagomizer"]
+
+[ext_resource type="Script" path="res://core/content/mutation_def.gd" id="1_mutdef"]
+
+[resource]
+script = ExtResource("1_mutdef")
+id = &"stegosaurus_thagomizer"
+display_name_key = &"mutation.stegosaurus_thagomizer.name"
+description_key = &"mutation.stegosaurus_thagomizer.tooltip"
+source_mod_id = &""
+override_existing = false
+rarity = &"common"
+stat_modifiers = {
+	&"damage_pct": 0.15,
+	&"crit_chance": 0.05
+}
+tags = [&"spike", &"melee", &"crit"]

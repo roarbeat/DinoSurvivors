@@ -45,6 +45,10 @@ signal boss_spawned(boss_id: StringName, position: Vector2)
 ## Boss besiegt. `run_time` ist Sekunden seit Run-Start.
 signal boss_defeated(boss_id: StringName, run_time: float)
 
+## Boss-Phase hat sich geändert (ADR 0029). `phase_index` ist 0-basiert,
+## `label_key` ist optionaler i18n-Key für Banner-UI.
+signal boss_phase_changed(boss_id: StringName, phase_index: int, label_key: StringName)
+
 
 # ---------------------------------------------------------------------------
 # --- Run-Lifecycle ---

@@ -45,6 +45,9 @@ func test_types_includes_known_kinds() -> void:
 	assert_true(t.has(&"mutation"))
 	assert_true(t.has(&"enemy"))
 	assert_true(t.has(&"boss"))
+	assert_true(t.has(&"dino"))
+	assert_true(t.has(&"wave"))
+	assert_true(t.has(&"sound"))
 
 
 func test_all_ids_returns_known_mutation() -> void:
@@ -79,6 +82,21 @@ func test_content_loaded_signal_was_emitted() -> void:
 		"ContentLoader sollte mind. 1 Item geladen haben (triceratops_horns)")
 
 
+func test_mutation_pool_has_at_least_seven() -> void:
+	# Stand v0.0.5+: 7 Mutationen (3 v0.0.3 + 4 in dieser Iteration)
+	var all := ContentLoader.all_ids(&"mutation")
+	assert_gte(all.size(), 7,
+		"Mutation-Pool muss mindestens 7 Einträge haben (Pick-Phase braucht Vielfalt)")
+
+
+func test_mutation_pool_includes_new_additions() -> void:
+	var all := ContentLoader.all_ids(&"mutation")
+	for expected_id in [&"velociraptor_dash", &"t_rex_jaw",
+			&"stegosaurus_thagomizer", &"pterodactyl_glide"]:
+		assert_true(all.has(expected_id),
+			"Erwartete neue Mutation '%s' fehlt im Loader" % expected_id)
+
+
 func test_validate_method_on_mutation_def() -> void:
 	# Direkter Validation-Test ohne ContentLoader-Schicht
 	var bad := MutationDef.new()
@@ -98,3 +116,31 @@ func test_validate_method_on_mutation_def() -> void:
 	bad_rarity.display_name_key = &"x.y"
 	bad_rarity.rarity = &"mythic"  # nicht in VALID_RARITIES
 	assert_string_contains(bad_rarity.validate(), "rarity")
+
+
+# ---------------------------------------------------------------------------
+# Content-Pool nach v0.0.7 (ADR 0023)
+# ---------------------------------------------------------------------------
+
+func test_enemy_pool_has_at_least_four() -> void:
+	var ids := ContentLoader.all_ids(&"enemy")
+	assert_gte(ids.size(), 4,
+		"Enemy-Pool muss mindestens 4 Einträge haben")
+
+
+func test_enemy_pool_includes_new_variants() -> void:
+	var ids := ContentLoader.all_ids(&"enemy")
+	for expected_id in [&"raptor_grunt", &"pteranodon", &"raptor_alpha",
+			&"armored_carnotaurus"]:
+		assert_true(ids.has(expected_id),
+			"Enemy '%s' fehlt im Loader" % expected_id)
+
+
+func test_boss_resource_loaded() -> void:
+	var ids := ContentLoader.all_ids(&"boss")
+	assert_true(ids.has(&"tyrannosaurus_prime"),
+		"BossDef-Stub muss vom Loader gefunden werden")
+	var boss := ContentLoader.get_or_null(&"boss", &"tyrannosaurus_prime") as BossDef
+	assert_not_null(boss)
+	assert_eq(boss.max_health, 800.0)
+	assert_eq(boss.reward_currency_amount, 50)

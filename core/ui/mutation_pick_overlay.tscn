@@ -1,0 +1,37 @@
+[gd_scene load_steps=2 format=3 uid="uid://dino_ui_mutation_pick"]
+
+[ext_resource type="Script" path="res://core/ui/mutation_pick_overlay.gd" id="1_pick"]
+
+[node name="MutationPickOverlay" type="CanvasLayer"]
+layer = 80
+script = ExtResource("1_pick")
+
+[node name="BG" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+
+[node name="Container" type="VBoxContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -120.0
+offset_right = 250.0
+offset_bottom = 120.0
+
+[node name="Title" type="Label" parent="Container"]
+text = "Pick a Mutation"
+horizontal_alignment = 1
+
+[node name="Button1" type="Button" parent="Container"]
+custom_minimum_size = Vector2(0, 60)
+
+[node name="Button2" type="Button" parent="Container"]
+custom_minimum_size = Vector2(0, 60)
+
+[node name="Button3" type="Button" parent="Container"]
+custom_minimum_size = Vector2(0, 60)

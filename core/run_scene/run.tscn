@@ -1,13 +1,28 @@
-[gd_scene load_steps=3 format=3 uid="uid://dino_run_scene"]
+[gd_scene load_steps=7 format=3 uid="uid://dino_run_scene"]
 
 [ext_resource type="Script" path="res://core/run_scene/run.gd" id="1_run"]
 [ext_resource type="PackedScene" uid="uid://dino_ui_game_over" path="res://core/ui/game_over.tscn" id="2_gameover"]
+[ext_resource type="PackedScene" uid="uid://dino_ui_hud" path="res://core/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" uid="uid://dino_ui_mutation_pick" path="res://core/ui/mutation_pick_overlay.tscn" id="4_pick"]
+[ext_resource type="PackedScene" uid="uid://dino_iso_world" path="res://core/world/iso_world.tscn" id="5_world"]
+[ext_resource type="PackedScene" uid="uid://dino_run_camera" path="res://core/world/run_camera.tscn" id="6_camera"]
 
 [node name="Run" type="Node2D"]
 script = ExtResource("1_run")
 
+[node name="WorldLayer" type="Node2D" parent="."]
+z_index = -10
+
+[node name="IsoWorld" parent="WorldLayer" instance=ExtResource("5_world")]
+
 [node name="PlayerSlot" type="Node" parent="."]
 
 [node name="EnemyContainer" type="Node" parent="."]
+
+[node name="RunCamera" parent="." instance=ExtResource("6_camera")]
+
+[node name="HUDLayer" parent="." instance=ExtResource("3_hud")]
+
+[node name="MutationPickLayer" parent="." instance=ExtResource("4_pick")]
 
 [node name="GameOverLayer" parent="." instance=ExtResource("2_gameover")]

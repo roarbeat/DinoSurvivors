@@ -30,6 +30,7 @@ extends Node2D
 @onready var player_slot: Node = $PlayerSlot
 @onready var enemy_container: Node = $EnemyContainer
 @onready var game_over_layer: GameOverOverlay = $GameOverLayer
+@onready var run_camera: RunCamera = $RunCamera
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +69,11 @@ func _ready() -> void:
 		return
 	player_slot.add_child(_player)
 	_player.set_dino(def)
+
+	# 2b. Camera auf Player zentrieren (ADR 0032)
+	if run_camera != null:
+		run_camera.set_target(_player)
+		run_camera.snap_to_target()
 
 	# 3. WaveSpawner spawn_root setzen
 	if get_node_or_null("/root/WaveSpawner") != null:
@@ -119,6 +125,12 @@ func _spawn_demo_enemies() -> void:
 # ---------------------------------------------------------------------------
 
 func _on_run_ended(reason: StringName, run_time: float) -> void:
+	# Save-Trigger: Bernstein und sonstige Meta-Progression persistieren.
+	# ADR 0030 — MetaProgression schreibt sich beim save_requested raus,
+	# SaveSystem schreibt das ganze data-Dict atomar auf Disk.
+	if get_node_or_null("/root/EventBus") != null:
+		EventBus.save_requested.emit(&"run_end")
+
 	if game_over_layer == null:
 		return
 	var wave_idx: int = 0
@@ -175,6 +187,10 @@ func _spawn_player_and_start() -> void:
 		return
 	player_slot.add_child(_player)
 	_player.set_dino(def)
+	# Camera-Re-Wire nach Restart (ADR 0032)
+	if run_camera != null:
+		run_camera.set_target(_player)
+		run_camera.snap_to_target()
 	if get_node_or_null("/root/WaveSpawner") != null:
 		WaveSpawner.set_spawn_root(enemy_container)
 	if get_node_or_null("/root/RunState") != null:

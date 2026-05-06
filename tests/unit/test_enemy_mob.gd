@@ -177,3 +177,54 @@ func test_enemy_no_movement_when_overlapping_player() -> void:
 	_mob._move_toward_player(0.1)
 	assert_eq(_mob.global_position, pos_before,
 		"Distanz=0 → Vector2.ZERO normalized → kein Movement")
+
+
+# ---------------------------------------------------------------------------
+# Visuelle Differenzierung (ADR 0024)
+# ---------------------------------------------------------------------------
+
+func test_setup_applies_body_color_from_def() -> void:
+	# pteranodon hat himmelblau
+	var pteranodon := ContentLoader.get_or_null(&"enemy", &"pteranodon") as EnemyDef
+	assert_not_null(pteranodon)
+	_mob.setup(pteranodon, Vector2.ZERO)
+	var body := _mob.get_node("Body") as ColorRect
+	assert_almost_eq(body.color.b, 0.910, 0.01,
+		"Pteranodon-Body muss blau sein")
+
+
+func test_setup_applies_body_size_from_def() -> void:
+	# armored_carnotaurus 28×28
+	var carnot := ContentLoader.get_or_null(&"enemy", &"armored_carnotaurus") as EnemyDef
+	assert_not_null(carnot)
+	_mob.setup(carnot, Vector2.ZERO)
+	var body := _mob.get_node("Body") as ColorRect
+	assert_almost_eq(body.size.x, 28.0, 0.5,
+		"Carnotaurus-Body muss 28px breit sein")
+
+
+func test_setup_centers_body_around_origin() -> void:
+	var alpha := ContentLoader.get_or_null(&"enemy", &"raptor_alpha") as EnemyDef
+	_mob.setup(alpha, Vector2.ZERO)
+	var body := _mob.get_node("Body") as ColorRect
+	# raptor_alpha 22×22 → offset_left = -11, offset_right = 11
+	assert_almost_eq(body.offset_left, -11.0, 0.5)
+	assert_almost_eq(body.offset_right, 11.0, 0.5)
+
+
+func test_setup_repositions_health_bar() -> void:
+	# Carnotaurus 28×28 → HealthBar.position.y = -14 - 8 = -22
+	var carnot := ContentLoader.get_or_null(&"enemy", &"armored_carnotaurus") as EnemyDef
+	_mob.setup(carnot, Vector2.ZERO)
+	var bar := _mob.get_node("HealthBar") as Node2D
+	assert_almost_eq(bar.position.y, -22.0, 0.5,
+		"HealthBar muss bei größerem Body weiter oben sitzen")
+
+
+func test_default_body_color_for_legacy_enemies() -> void:
+	# raptor_grunt hat keine body_color in der .tres-Datei (default greift)
+	var grunt := ContentLoader.get_or_null(&"enemy", &"raptor_grunt") as EnemyDef
+	assert_almost_eq(grunt.body_color.r, 0.82, 0.01,
+		"raptor_grunt fällt auf Default-rot zurück")
+	assert_eq(grunt.body_size, Vector2(16, 16),
+		"raptor_grunt fällt auf 16×16 zurück")

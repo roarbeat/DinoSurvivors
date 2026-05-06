@@ -29,6 +29,30 @@ msgstr "Ankylosaurus Plates"
 msgid "mutation.ankylosaur_plates.tooltip"
 msgstr "Heavy like a vault, less inviting. (+20% armor, +15% max HP)"
 
+msgid "mutation.velociraptor_dash.name"
+msgstr "Velociraptor Dash"
+
+msgid "mutation.velociraptor_dash.tooltip"
+msgstr "Faster than thought. Faster than prey. (+20% speed, +10% pickup radius)"
+
+msgid "mutation.t_rex_jaw.name"
+msgstr "T-Rex Jaw"
+
+msgid "mutation.t_rex_jaw.tooltip"
+msgstr "Tiny arms, mighty bite. (+25% damage, +10% crit damage)"
+
+msgid "mutation.stegosaurus_thagomizer.name"
+msgstr "Stegosaurus Thagomizer"
+
+msgid "mutation.stegosaurus_thagomizer.tooltip"
+msgstr "Four spikes, one message. You are the message. (+15% damage, +5% crit chance)"
+
+msgid "mutation.pterodactyl_glide.name"
+msgstr "Pterodactyl Glide"
+
+msgid "mutation.pterodactyl_glide.tooltip"
+msgstr "Those who fly are bitten less often. (+25% speed, +15% pickup radius)"
+
 # --- Enemies ---
 
 msgid "enemy.raptor_grunt.name"
@@ -36,6 +60,97 @@ msgstr "Velociraptor (Swarm)"
 
 msgid "enemy.raptor_grunt.tooltip"
 msgstr "Fast, lightly armored, never alone."
+
+msgid "enemy.pteranodon.name"
+msgstr "Pteranodon"
+
+msgid "enemy.pteranodon.tooltip"
+msgstr "Dives from above, hits from a weird angle, gone."
+
+msgid "enemy.raptor_alpha.name"
+msgstr "Velociraptor (Alpha)"
+
+msgid "enemy.raptor_alpha.tooltip"
+msgstr "First the leader arrives. The pack listens."
+
+msgid "enemy.armored_carnotaurus.name"
+msgstr "Carnotaurus (Armored)"
+
+msgid "enemy.armored_carnotaurus.tooltip"
+msgstr "Heavy like a bus. Drives bus passengers to despair."
+
+msgid "boss.tyrannosaurus_prime.name"
+msgstr "Tyrannosaurus Prime"
+
+msgid "boss.tyrannosaurus_prime.tooltip"
+msgstr "The original terror. 12 meters of spine, bad mood included."
+
+msgid "boss.tyrannosaurus_prime.intro"
+msgstr "BOSS! TYRANNOSAURUS PRIME AWAKES!"
+
+msgid "boss.tyrannosaurus_prime.phase_mid"
+msgstr "T-PRIME: ENRAGED"
+
+msgid "boss.tyrannosaurus_prime.phase_rage"
+msgstr "T-PRIME: FRENZY!"
+
+# --- Sounds (ADR 0028) ---
+
+msgid "sfx.enemy_died.name"
+msgstr "Enemy death"
+
+msgid "sfx.enemy_died.tooltip"
+msgstr "Swarm-mob dies — short crackle."
+
+msgid "sfx.boss_defeated.name"
+msgstr "Boss defeated"
+
+msgid "sfx.boss_defeated.tooltip"
+msgstr "Boss falls — loud, final, slightly reverberant."
+
+msgid "sfx.player_damaged.name"
+msgstr "Player hit"
+
+msgid "sfx.player_damaged.tooltip"
+msgstr "Player takes damage — grunt + hit impact."
+
+msgid "sfx.player_died.name"
+msgstr "Player death"
+
+msgid "sfx.player_died.tooltip"
+msgstr "Game-over sting — run ended."
+
+msgid "sfx.mutation_picked.name"
+msgstr "Mutation chosen"
+
+msgid "sfx.mutation_picked.tooltip"
+msgstr "Mutation confirm — short positive sting."
+
+msgid "sfx.wave_started.name"
+msgstr "Wave incoming"
+
+msgid "sfx.wave_started.tooltip"
+msgstr "Wave incoming — quiet drum build-up."
+
+# --- Waves (ADR 0026) ---
+
+msgid "wave.default.name"
+msgstr "Standard wave"
+
+msgid "wave.default.tooltip"
+msgstr "The default spawn rhythm. Ramps up each wave."
+
+msgid "wave.5_tyrannosaurus.name"
+msgstr "Wave 5 — Tyrannosaurus appears"
+
+msgid "wave.5_tyrannosaurus.tooltip"
+msgstr "First encounter with Tyrannosaurus Prime."
+
+msgid "wave.10_tyrannosaurus.name"
+msgstr "Wave 10 — Tyrannosaurus returns"
+
+msgid "wave.10_tyrannosaurus.tooltip"
+msgstr "The Tyrannosaurus is angrier now — and the swarm is bigger."
 
 # --- Dinos ---
 

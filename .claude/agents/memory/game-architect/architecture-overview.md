@@ -72,10 +72,17 @@ Phase 0a + EventBus + ContentLoader-Skelett stehen.
 | 0016 | Run-Scene-Glue | Accepted |
 | 0010 | Modifier-Pipeline | Accepted |
 | 0011 | Hit-Detection v1 (distanz-basiert) | Accepted |
+| 0012 | Damage-Number-VFX | Accepted |
 | 0013 | Auto-Spawn-Curves v1 (prozedural) | Accepted |
 | 0017 | Enemy-Movement v1 (Direkt-Walk) | Accepted |
 | 0018 | Visueller Stub + HP-Bar | Accepted |
 | 0019 | Game-Over-Overlay + Run-Restart | Accepted |
+| 0020 | HUD | Accepted |
+| 0021 | Mutation-Pick-Phase | Accepted |
+| 0022 | Rarity-Weighted Picks | Accepted |
+| 0023 | Enemy-Variants + Boss-Stub | Accepted |
+| 0024 | Visuelle Enemy-Differenzierung | Accepted |
+| 0025 | Boss-Spawn-Mechanik | Accepted |
 | 0014 | Mutation→Modifier-Bridge | Accepted |
 | 0015 | Player-Mutation-System | Accepted |
 | 0006 | Hot-Reload-Workflow Dev | Backlog |

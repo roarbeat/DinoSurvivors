@@ -25,12 +25,25 @@ DinoSurvivors/
 │   ├── run_state.gd            ADR 0006 — State-Maschine
 │   ├── wave_spawner.gd         ADR 0006 — Wave-Lifecycle
 │   ├── player_mutations.gd     ADR 0015 — Aggregator-Autoload
+│   ├── meta_progression.gd     ADR 0030 — Bernstein-Tracker (persistent)
 │   ├── player/                 ADR 0008
 │   │   ├── player_character.gd
 │   │   └── player_character.tscn
 │   ├── enemy/                  ADR 0009
 │   │   ├── enemy_mob.gd
 │   │   └── enemy_mob.tscn
+│   ├── boss/                   ADR 0025
+│   │   ├── boss_mob.gd
+│   │   └── boss_mob.tscn
+│   ├── audio/                  ADR 0028
+│   │   └── sfx_bus.gd          SFX-Bridge auf EventBus
+│   ├── art/                    ADR 0031
+│   │   └── palette.gd          Single-Source-of-Truth-Color-Palette
+│   ├── world/                  ADR 0031 + 0032
+│   │   ├── iso_world.gd        Iso-Tile-Map-Skelett
+│   │   ├── iso_world.tscn
+│   │   ├── run_camera.gd       Player-Follow-Camera mit Smooth-Lerp
+│   │   └── run_camera.tscn
 │   ├── run_scene/              ADR 0016
 │   │   ├── run.gd
 │   │   └── run.tscn            (main_scene beim Boot)
@@ -57,16 +70,34 @@ DinoSurvivors/
 │       ├── mutation_def.gd
 │       ├── enemy_def.gd
 │       ├── boss_def.gd
-│       └── dino_def.gd
-├── content/                    .tres-Resources (Mutationen, Gegner, Bosse, Dinos)
+│       ├── dino_def.gd
+│       ├── wave_def.gd         ADR 0026 — Wellen als Content-Resource
+│       └── sound_def.gd        ADR 0028 — SFX als Content-Resource
+├── content/                    .tres-Resources (Mutationen, Gegner, Bosse, Dinos, Wellen)
 │   ├── mutations/
 │   │   ├── triceratops_horns.tres
 │   │   ├── spinosaur_sail.tres
 │   │   └── ankylosaur_plates.tres
 │   ├── enemies/
-│   │   └── raptor_grunt.tres
-│   └── dinos/
-│       └── trex.tres
+│   │   ├── raptor_grunt.tres
+│   │   ├── pteranodon.tres
+│   │   ├── raptor_alpha.tres
+│   │   └── armored_carnotaurus.tres
+│   ├── bosses/
+│   │   └── tyrannosaurus_prime.tres
+│   ├── dinos/
+│   │   └── trex.tres
+│   ├── waves/                  ADR 0026
+│   │   ├── wave_default.tres   Curve-Default (is_default=true)
+│   │   ├── wave_5_tyrannosaurus.tres   Override Welle 5
+│   │   └── wave_10_tyrannosaurus.tres  Override Welle 10
+│   └── sounds/                 ADR 0028
+│       ├── sfx_enemy_died.tres
+│       ├── sfx_boss_defeated.tres
+│       ├── sfx_player_damaged.tres
+│       ├── sfx_player_died.tres
+│       ├── sfx_mutation_picked.tres
+│       └── sfx_wave_started.tres
 ├── locale/                     po-Files (de.po, en.po)
 ├── BALANCE.csv                 Stats-Audit-Sheet
 ├── tests/
@@ -854,6 +885,733 @@ is_shown() -> bool
 - change_scene_to_packed beim Tod (Welt-Hintergrund verschwindet)
 - Auto-Restart ohne User-Confirm (Frustration)
 
+## Pattern: HUD-Overlay (ADR 0020)
+
+CanvasLayer-Overlay mit drei Anzeigen: Run-Timer, Wave-Counter,
+Mutation-Liste. Lauscht auf EventBus + pollt RunState pro Frame.
+
+**Scene-Layer-Konvention**
+
+```
+RunScene (Node2D, root)
+├── PlayerSlot       (game-world)
+├── EnemyContainer   (game-world)
+├── HUDLayer         (CanvasLayer, layer=50)   ← In-Game-HUD
+└── GameOverLayer    (CanvasLayer, layer=100)  ← darüber bei Tod
+```
+
+**HUD-Anzeigen**
+
+| Element | Position | Quelle |
+|---------|----------|--------|
+| Wave-Label | oben links | EventBus.wave_started |
+| Timer-Label | oben mitte | _process pollt RunState.get_run_time |
+| Mutations-Label | oben rechts | EventBus.mutations_changed → PlayerMutations.get_picked |
+
+**Format-Helper (testbar)**
+
+```gdscript
+HUDOverlay._format_time(125.0) → "2:05"
+HUDOverlay._format_time(63.0)  → "1:03"
+HUDOverlay._format_time(-5.0)  → "0:00"  # clamp
+```
+
+**Lifecycle**
+
+- `EventBus.run_started` → HUD wird sichtbar, Timer = 0:00, Wave = 1
+- `EventBus.run_ended` → HUD wird unsichtbar (GameOver darüber)
+- `EventBus.wave_started(idx, diff)` → "Wave N
+×1.X" wenn diff > 1
+- `EventBus.mutations_changed` → Liste aus PlayerMutations.get_picked
+
+**Bewusst NICHT in v1**
+
+- HP-Anzeige im HUD (HealthBar über Mob reicht)
+- Damage-Numbers (eigenes ADR)
+- i18n der Labels (Dev-Strings v1)
+- Pause-Menü-Integration
+- Mutation-Tooltips bei Hover
+
+## Pattern: Mutation-Pick-Phase (ADR 0021)
+
+Nach jeder Welle pausiert das Spiel und der Spieler wählt eine von 3
+zufälligen Mutationen. Implementiert via `auto_advance`-Flag auf
+WaveSpawner + PickOverlay als CanvasLayer.
+
+**Lifecycle**
+
+```
+WaveSpawner._on_wave_timeout
+  → EventBus.wave_cleared.emit(idx)
+  → if auto_advance: _start_next_wave  (Default-Pfad)
+                else: warten auf request_next_wave
+                      ↑
+MutationPickOverlay._on_wave_cleared
+  → show_pick_phase()
+    → 3 zufällige nicht-gepickte Mutationen (oder weniger)
+    → get_tree().paused = true
+    → visible = true
+  → Spieler klickt Button N
+  → _on_pick(offered_ids[N])
+    → PlayerMutations.pick(id)
+    → hide_overlay()
+      → get_tree().paused = false
+      → WaveSpawner.request_next_wave()  ← startet nächste Welle
+```
+
+**WaveSpawner-Konvention**
+
+```gdscript
+@export var auto_advance: bool = true   # Default Backward-kompat
+WaveSpawner.request_next_wave()         # Public, no-op wenn !active
+```
+
+MutationPickOverlay setzt im _ready: `WaveSpawner.auto_advance = false`.
+
+**Edge-Cases**
+
+| Verfügbare Mutationen | Verhalten |
+|----------------------|-----------|
+| 0 (alle gepickt) | Phase übersprungen, sofort request_next_wave |
+| 1-2 | Entsprechende Buttons sichtbar, Rest hidden |
+| 3+ | 3 zufällige, Rest hidden |
+
+**Layer-Stack der RunScene**
+
+```
+Run (Node2D)
+├── PlayerSlot, EnemyContainer  (game-world)
+├── HUDLayer            layer=50   (sichtbar während Run)
+├── MutationPickLayer   layer=80   (während Pick-Phase)
+└── GameOverLayer       layer=100  (bei Tod)
+```
+
+**Bewusst NICHT in v1**
+
+- Rarity-gewichtete Picks (eigenes ADR)
+- Reroll gegen Currency
+- Tooltips bei Hover
+- Pause-aware Run-Timer (HUD-Timer läuft real-time während Pause)
+
+## Pattern: Rarity-Weighted Picks (ADR 0022)
+
+Pick-Phase wählt Mutationen gewichtet nach Rarity statt uniform-zufällig.
+
+**Standard-Verteilung (Survivor-likes-Konvention)**
+
+| Rarity | Gewicht | Erwartet pro Pick |
+|--------|---------|-------------------|
+| Common | 70 | ~70% |
+| Rare | 25 | ~25% |
+| Epic | 4.5 | ~4.5% |
+| Legendary | 0.5 | ~0.5% |
+
+Effektive Wahrscheinlichkeit pro Mutation hängt vom Pool ab:
+mehrere Common erhöhen die Gesamt-Common-Chance, jedes einzelne wird
+seltener.
+
+**Implementation**
+
+```gdscript
+# In MutationPickOverlay:
+const RARITY_WEIGHTS := { &"common": 70.0, &"rare": 25.0, ... }
+
+func _weighted_pick_one(pool):
+    var weight_sum := pool.map(weight).sum()
+    var roll := _rng.randf() * weight_sum
+    var cumulative := 0.0
+    for m in pool:
+        cumulative += weight(m.rarity)
+        if roll <= cumulative:
+            return m
+```
+
+**Without-Replacement**
+
+3 Picks pro Phase liefern 3 unique IDs. Nach jedem Pick wird die ge-
+wählte Mutation aus dem Pool entfernt → keine Duplikate.
+
+**RNG-Determinismus**
+
+`set_rng(rng)` für deterministische Tests (analog zu CritModifier
+in ADR 0010).
+
+**Bewusst NICHT in v1**
+
+- Player-Stat-Modifier auf Pick-Chance (z.B. „+10% Rare-Chance")
+- Reroll gegen Currency
+- Pity-Timer
+- Mod-Hook für RARITY_WEIGHTS (Modder schreiben aktuell Patch)
+
+## Pattern: Damage-Number-VFX (ADR 0012)
+
+Floating-Numbers über getroffenem Mob bei jedem Treffer. **Lokal an
+HealthComponent gebunden** — kein EventBus-Aufruf (Hot-Path-Schutz).
+
+**Spawn-Pfad**
+
+```
+HealthComponent.take_damage(info)
+  → damage_taken-Signal (lokal)
+  → HealthBar._on_damage_taken
+    → _update_visual (Bar schrumpft)
+    → _spawn_damage_number(info) wenn spawn_damage_numbers=true
+       → DamageNumber.show_damage(amount, is_crit, global_pos)
+       → unter current_scene gehängt (überlebt Mob-queue_free)
+```
+
+**Visual-Spec (Crit-Variation)**
+
+| Element | Standard | Crit |
+|---------|----------|------|
+| Farbe | weiß | gelb (#FFD000) |
+| Font-Größe | 14 | 20 |
+| Tween: rise | 30px | 50px |
+| Tween: fade | 0.7s | 0.9s |
+| Format | "15", "1.5K" bei ≥1000 | gleich |
+
+**Bewusst NICHT in v1**
+
+- Damage-Type-Farben (fire = orange, etc.) — eigenes ADR
+- Object-Pool für Performance — eigenes ADR
+- Hit-Flash auf Mob-Body — eigenes ADR
+- Crit-Bubble bei extrem hohen Crits — eigenes ADR
+
+**Testbarkeit**
+
+`DamageNumber._format_amount` ist static — direkt testbar.
+`HealthBar.spawn_damage_numbers = false` für Tests, die Damage ohne
+VFX-Side-Effects testen wollen.
+
+## Pattern: Wave-Pool-Rotation (ADR 0023)
+
+`WaveSpawner` wählt aus einem **Welle-spezifischen Pool** statt fixem
+Enemy-Typ. Pool wächst monoton mit Welle-Index.
+
+```
+Welle  1-2:  [raptor_grunt]
+Welle  3-5:  + raptor_alpha
+Welle  6-10: + pteranodon
+Welle 11+:   + armored_carnotaurus
+```
+
+```gdscript
+func _pool_for_wave(idx: int) -> Array[StringName]:
+    if idx <= 2: return [&"raptor_grunt"]
+    if idx <= 5: return [&"raptor_grunt", &"raptor_alpha"]
+    if idx <= 10: return [&"raptor_grunt", &"raptor_alpha", &"pteranodon"]
+    return [&"raptor_grunt", &"raptor_alpha", &"pteranodon", &"armored_carnotaurus"]
+
+func _enemy_id_for_wave(idx: int) -> StringName:
+    var pool := _pool_for_wave(idx)
+    return pool[randi() % pool.size()]
+```
+
+**Pool-Wahl ist v1 uniform** — Rarity-gewichtete Spawns sind eigenes ADR.
+**WaveDef als Content-Resource** ersetzt diesen Code mit Daten-Lookup
+in einem späteren ADR.
+
+## Pattern: Boss-Resource (Stub)
+
+`tyrannosaurus_prime.tres` (BossDef) ist im ContentLoader registriert,
+hat aber **keine Spawn-Mechanik in v1**. Boss-Spawn (mit BossMob-Scene,
+Telegraphie, eigenem Death-Pfad zu `boss_defeated`) ist eigenes ADR.
+
+```gdscript
+var boss := ContentLoader.get_or_null(&"boss", &"tyrannosaurus_prime") as BossDef
+# boss.max_health == 800, boss.reward_currency_amount == 50
+# boss.phases == []  (Schema kommt später)
+```
+
+## Pattern: Visuelle Enemy-Differenzierung (ADR 0024)
+
+EnemyDef hat zwei Visual-Felder (`body_color`, `body_size`), EnemyMob
+appliziert sie beim setup() auf das Body-ColorRect. HP-Bar-Position
+skaliert automatisch mit body_size.
+
+```gdscript
+# In EnemyDef:
+@export var body_color: Color = Color(0.82, 0.18, 0.18)  # rot default
+@export var body_size: Vector2 = Vector2(16, 16)         # default
+
+# In EnemyMob.setup(def, pos):
+_apply_visuals(def)   # appliziert color + size + HP-Bar-Offset
+```
+
+**Color-Konvention v1**
+
+| Enemy | Color | Size | Bedeutung |
+|-------|-------|------|-----------|
+| raptor_grunt | rot `#D03030` | 16×16 | Standard |
+| pteranodon | himmelblau `#5AB8E8` | 14×14 | Flieger, klein/fragil |
+| raptor_alpha | dunkelrot `#A02020` | 22×22 | Mid-Tier, stärker |
+| armored_carnotaurus | braungrau `#7A6850` | 28×28 | Tank-Erdton |
+| boss_tyrannosaurus_prime | dunkelviolett (geplant) | 40×40 | Wenn Spawn-Mechanik kommt |
+
+**Sprite-Pfad ist offen**
+
+Wenn Sprites kommen (eigenes ADR), wird EnemyMob einen weiteren
+Visual-Mode bekommen: `body_color/size` für ColorRect-Mode,
+`texture/animation` für Sprite-Mode. EnemyDef bleibt das gleiche
+Resource — neue Felder werden additiv hinzugefügt.
+
+## Pattern: Boss-Spawn (ADR 0025)
+
+`BossMob` ist eine eigene Klasse mit gleichem Component-Pattern wie EnemyMob,
+aber eigenem Death-Pfad: feuert `boss_defeated` statt `enemy_died`.
+
+**Boss-Welle**
+
+```gdscript
+const BOSS_WAVE_INTERVAL: int = 5
+
+func _is_boss_wave(idx: int) -> bool:
+    return idx > 0 and idx % BOSS_WAVE_INTERVAL == 0
+```
+
+Welle 5, 10, 15, … sind Boss-Wellen. Bei Wave-Start spawnt der Boss EINMAL
+zusätzlich zu normalen Auto-Spawns.
+
+**BossMob-Architektur**
+
+```
+BossMob (Node2D)
+├── Body (ColorRect, Visual via BossDef.body_color/size)
+├── Health (HealthComponent, is_boss=true → unterdrückt enemy_died)
+├── Dealer (DamageDealerComponent)
+└── HealthBar (große Boss-Bar)
+
+Groups:
+- "enemy"  → Player-Auto-Attack greift
+- "boss"   → Marker für UI/Telemetrie
+```
+
+**Death-Pfad (sauber getrennt)**
+
+```
+HealthComponent.take_damage → HP=0 → _die()
+  if is_player: EventBus.player_died
+  if is_boss:   return (Owner feuert selbst)
+  else:         EventBus.enemy_died
+
+BossMob._on_died (lokales Signal von Health):
+  EventBus.boss_defeated(boss_id, run_time)
+```
+
+**Visual-Convention**
+
+| Boss | Color | Size | HP | Speed | DMG |
+|------|-------|------|-----|-------|-----|
+| tyrannosaurus_prime | dunkelviolett | 40×40 | 800 | 80 | 40 |
+
+**Nicht in v1**
+
+- Boss-Phasen (`phases: Array[Dictionary]` bleibt leer)
+- Boss-Intro-Card-VFX
+- Boss-spezifische Abilities (Stomp, Roar)
+- Music-Switch bei Boss-Spawn
+
+## Pattern: RunCamera (ADR 0032)
+
+`RunCamera` ist eine `Camera2D`-Subklasse, die einem Target-Node2D mit
+Smooth-Lerp folgt. Pure-Function-Update-Hook (`compute_next_position`)
+macht das System headless-testbar.
+
+**Lerp-Formel (Frame-Rate-Independent)**
+
+```gdscript
+alpha = 1.0 - exp(-smoothing * delta)
+new   = lerp(current, target, alpha)
+```
+
+Bei `smoothing = 0.0` → harter Snap. `5.0` ist Standard für
+Survivor-likes-Feel.
+
+**Pixel-Snap**
+
+`pixel_snap = true` (Default) rundet die Camera-Position auf ganze
+Pixel. Wichtig für Pixel-Art — ohne das passieren Sub-Pixel-Wackler
+beim Sprite-Render.
+
+**Public-API**
+
+```gdscript
+RunCamera.set_target(node: Node2D)               # Target wechseln
+RunCamera.snap_to_target()                       # hard snap (kein lerp)
+RunCamera.set_follow_smoothing(value: float)
+RunCamera.set_bounds(min: Vector2, max: Vector2) # auto-enable_limits
+```
+
+Pure Function:
+```gdscript
+RunCamera.compute_next_position(current, target, smoothing, delta, pixel_snap_enabled) -> Vector2
+```
+
+**RunScene-Integration**
+
+```
+Run (Node2D)
+├── WorldLayer (z_index=-10)
+│   └── IsoWorld
+├── PlayerSlot
+├── EnemyContainer
+├── RunCamera ← folgt Player nach _spawn_player_and_start
+├── HUDLayer (CanvasLayer)
+├── MutationPickLayer
+└── GameOverLayer
+```
+
+`run_camera.set_target(_player)` + `snap_to_target()` direkt nach
+Player-Spawn → kein "fly-in" beim Run-Start.
+
+**Zoom-Konvention**
+
+Default `zoom = (2, 2)` für 1080p mit 540×270 logischen Pixeln.
+Skaliert auf 4K auf 4×, etc. Modder können eigene Werte setzen.
+
+**Nicht in v1**
+
+- Camera-Shake (Trauma-Wert, exponentielles Decay)
+- Mutation-Pick-Phase Zoom-In + Vignette
+- Boss-Intro-Camera-Pan
+- Camera-Bounds aus IsoWorld auto-berechnet
+- Multi-Camera-Setup (Mini-Map, Boss-Cam)
+
+## Pattern: Iso-World + Palette (ADR 0031)
+
+`IsoWorld` ist ein Tile-Map-Skelett, das beim `_ready()` ein Grid von
+Iso-Diamonds als `Polygon2D` baut. Sobald echte Sprite-Tiles landen,
+wird `IsoWorld` auf `TileMapLayer + TileSet` umgebaut — gleicher Layout-
+Code, andere Render-Quelle. **Public-API bleibt stabil.**
+
+**Iso-Math (pure functions, statisch)**
+
+```gdscript
+IsoWorld.tile_to_iso(Vector2i(x, y), tile_size = (64, 32)) -> Vector2
+IsoWorld.iso_to_tile(Vector2(px, py)) -> Vector2i
+```
+
+Konvention: `(0,0)` ist World-Origin. `(1,0)` → `(32, 16)` (rechts-unten).
+`(0,1)` → `(-32, 16)` (links-unten). Roundtrip ist identity.
+
+**Layout (RunScene)**
+
+```
+Run (Node2D)
+├── WorldLayer (Node2D, z_index = -10)
+│   └── IsoWorld (Polygon2D-Tiles)
+├── PlayerSlot
+├── EnemyContainer
+├── HUDLayer (CanvasLayer, layer 50)
+├── MutationPickLayer (CanvasLayer, layer 80)
+└── GameOverLayer (CanvasLayer, layer 100)
+```
+
+WorldLayer hat negativen Z-Index → alle Mobs rendern darüber. CanvasLayer-
+Overlays sind koord-system-unabhängig.
+
+**Single-Source-of-Truth Palette**
+
+`core/art/palette.gd` zentralisiert alle Color-Konstanten aus
+[`docs/art/VISUAL-TARGET.md`](art/VISUAL-TARGET.md). EnemyDef/BossDef/
+HUD/IsoWorld lesen ihre Default-Farben hier ab. Mod-Resourcen können
+eigene Werte setzen — die Palette ist nur Fallback.
+
+**Asset-Drop-Pfad**
+
+```
+art/
+├── tiles/   (64×32 Iso-PNGs)
+├── decor/   (Blumen, Crystals)
+├── player/  (AnimatedSprite2D-Scenes)
+├── enemies/ (pro Variante eine .tscn)
+├── bosses/
+├── pickups/
+├── ui/      (Pixel-Font, 9-Slice)
+└── audio/   (.ogg-Streams für SoundDef.stream)
+```
+
+Jeder Subfolder hat ein README mit Sprite-Spec (Größe, Frames, Pivot).
+Sobald echte Sprites landen, werden sie in `*.tres`-Files via
+`visual_scene` (ADR 0027) bzw. `stream` (ADR 0028) referenziert.
+
+**Nicht in v1**
+
+- TileSet-Authoring-Workflow (kommt mit echten Sprite-Tiles)
+- Camera2D-Player-Follow + World-Boundaries
+- Y-Sort-Layering (Mobs vor/hinter Decor je nach Y-Position)
+- Procedural-Tile-Placement
+- MapDef als Content-Resource (Map-Layouts data-driven definierbar)
+
+## Pattern: Persistente Meta-Progression (ADR 0030)
+
+`MetaProgression` ist ein Autoload-Tracker für Run-übergreifende
+Currencies (in v1: Bernstein/`amber`). Bossen droppen
+`reward_currency_amount` automatisch. Save/Load wird über das EventBus-
+Save-Protokoll abgewickelt.
+
+**EventBus-Driven**
+
+```
+EventBus.boss_defeated  → MetaProgression.add_currency(amber, def.reward)
+EventBus.save_requested → MetaProgression schreibt seinen Slot in SaveSystem
+EventBus.save_loaded    → MetaProgression liest seinen Slot aus SaveSystem
+```
+
+Game-Code feuert nie direkt `MetaProgression.add_currency()` — alles
+geht durch den EventBus. Test-Code und Mods dürfen direkt aufrufen.
+
+**Public-API**
+
+```gdscript
+MetaProgression.get_currency(id = &"amber")    -> int
+MetaProgression.add_currency(id, amount)        -> int   # neuer Wert
+MetaProgression.set_currency(id, value)         -> void
+MetaProgression.list_currencies()               -> Dictionary
+MetaProgression.reset()                          -> void  # Test-Hook
+```
+
+**Save-Schema (v1.1, additive)**
+
+```json
+{
+  "schema_version": 1,
+  "data": {
+    "meta_progression": {
+      "amber": 250
+    }
+  }
+}
+```
+
+Saves vor v0.1.0 (ohne `meta_progression`-Slot) werden korrekt geladen
+— MetaProgression startet mit Default-State (amber=0). Kein
+Schema-Bruch, keine Migration-File.
+
+**Run-Ende-Trigger**
+
+`RunScene._on_run_ended` feuert `save_requested(&"run_end")`, sodass
+Bernstein nach jedem Run automatisch persistiert wird (Player-Death,
+Boss-Defeat, Quit). Atomic-Write durch SaveSystem.
+
+**Nicht in v1**
+
+- Meta-Shop-UI (Bernstein gegen permanente Upgrades)
+- Multiple Currency-Typen (Schema unterstützt es, Game füllt nur amber)
+- Currency-Pickups als World-Items (Coin-Sprites einsammeln)
+- Currency-Drops von Enemies (nicht nur Bossen)
+
+## Pattern: Boss-Phasen (ADR 0029)
+
+`BossDef.phases: Array[BossPhase]` definiert HP-Threshold-basierte
+Verhaltens-Wechsel. Jede Phase hat Speed-/Damage-Multiplikatoren und
+einen Color-Tint.
+
+**Resource-Schema**
+
+```gdscript
+class BossPhase extends Resource:
+    @export var hp_threshold: float = 1.0       # 0.0–1.0
+    @export var speed_multiplier: float = 1.0
+    @export var damage_multiplier: float = 1.0
+    @export var color_tint: Color = Color.WHITE
+    @export var label_key: StringName = &""     # i18n für Banner
+```
+
+**Resolver-Logik** (im BossMob)
+
+```gdscript
+# Phasen sortiert: 1.0 (Spawn) zuerst, 0.0 (Final) zuletzt.
+# Aktive Phase = letzte Phase mit hp_threshold >= current_hp_pct.
+# MONOTON: Index darf nur steigen, kein Rückfall bei Heal.
+```
+
+**Phase-Transition triggert EventBus**
+
+```gdscript
+EventBus.boss_phase_changed(boss_id, phase_index, label_key)
+```
+
+UI/SFX/VFX-Hooks:
+
+- HUD zeigt Banner mit `tr(label_key)` ("T-PRIME: WAHNSINN!")
+- SfxBus könnte `sfx_boss_phase_change` triggern (über add_signal_mapping)
+- Camera-Shake bei Phase-Wechsel (eigenes ADR)
+
+**tyrannosaurus_prime-Phasen**
+
+| Phase | HP-Threshold | Speed × | Damage × | Tint |
+|-------|--------------|---------|----------|------|
+| 0 Spawn | 1.0 | 1.0 | 1.0 | weiß |
+| 1 Mid | 0.66 | 1.2 | 1.15 | leicht rosa |
+| 2 Rage | 0.33 | 1.5 | 1.4 | rot |
+
+**Backward-Kompat**
+
+`def.phases = []` → Boss verhält sich wie vor ADR 0029
+(`get_current_phase_index() == -1`, Speed/Damage = base).
+
+**Nicht in v1**
+
+- Boss-Abilities pro Phase (Stomp, Roar)
+- Phase-spezifischer Add-Spawn-Pool
+- Phase-Timer (zwingender Wechsel nach 30s)
+- Phase-Transition-VFX
+
+## Pattern: SFX-Bus (ADR 0028)
+
+`SfxBus` ist ein Autoload-Bridge zwischen EventBus-Signals und Audio-
+Playback. Game-Code feuert nie selbst SFX — alles geht über bedeutsame
+EventBus-Signale.
+
+**Signal → Sound-Mapping**
+
+```gdscript
+const SIGNAL_TO_SOUND: Dictionary = {
+    &"enemy_died":      &"sfx_enemy_died",
+    &"boss_defeated":   &"sfx_boss_defeated",
+    &"player_damaged":  &"sfx_player_damaged",
+    &"player_died":     &"sfx_player_died",
+    &"mutation_picked": &"sfx_mutation_picked",
+    &"wave_started":    &"sfx_wave_started",
+}
+```
+
+**Pool-Architektur**
+
+Pool von 8 `AudioStreamPlayer`-Instanzen, Round-Robin-Allocation —
+verhindert Audio-Cut-off bei vielen parallelen Treffern.
+
+**SoundDef-Resource**
+
+```gdscript
+class SoundDef extends ContentItem:
+    @export var stream: AudioStream            # null = no-op (v1-Default)
+    @export var volume_db: float = 0.0
+    @export var pitch_random_range: float = 0.0  # ±-Range pro Playback
+```
+
+**No-op-v1**
+
+Alle 6 initialen SoundDefs haben `stream = null`. SfxBus skippt diese
+als no-op. Sobald echte .ogg-Files landen, werden sie einfach im
+.tres referenziert — kein Code-Touch.
+
+**Mod-API**
+
+```gdscript
+SfxBus.add_signal_mapping(signal_name, sound_id)
+SfxBus.set_muted(true)   # globale Stumm-Schaltung (Test-Hook)
+SfxBus.play(sound_id)    # explizit triggern
+```
+
+**Nicht in v1**
+
+- Music-Streaming (BG-Tracks, Loop-Punkte, Cross-fade)
+- 3D-positionales Audio (`AudioStreamPlayer2D`)
+- Audio-Bus-Mixer (Master/SFX/Music-Volume-Slider)
+- SFX-Cooldown-Logik (vermeidet Audio-Spam bei Schwarm-Damage)
+- Audio-Ducking
+
+## Pattern: Visual-Provider (ADR 0027)
+
+`EnemyDef`, `DinoDef` und `BossDef` haben einen optionalen Slot
+`visual_scene: PackedScene`. Wenn gesetzt, instanziert der Mob die Scene
+und versteckt den ColorRect-Body. Sonst bleibt der ColorRect-Mode aktiv
+(ADR 0024).
+
+**Migrations-Pfad zu Sprites**
+
+```gdscript
+# Default — kein Visual-Asset, ColorRect zeigt body_color/body_size
+visual_scene = null
+
+# Sprite einhängen
+visual_scene = preload("res://art/raptor_grunt.tscn")
+visual_pivot_offset = Vector2(0, -4)  # HealthBar etwas anheben
+```
+
+**Mob-Logik (gemeinsames Pattern)**
+
+```gdscript
+func _apply_visuals(def) -> void:
+    if def.visual_scene != null:
+        _spawn_visual_scene(def.visual_scene)
+        body.visible = false
+    else:
+        body.visible = true
+        body.color = def.body_color
+        body.size = def.body_size
+```
+
+**Modder-Surface**
+
+Modder können eine PackedScene-Reference im .tres-File setzen — kein
+Code nötig. Die Sprite-Scene muss eine Node2D-Wurzel haben, deren Pivot
+auf (0, 0) zentriert ist. HealthBar-Anchor ist über `visual_pivot_offset`
+korrigierbar.
+
+**Nicht in v1**
+
+- AnimatedSprite2D-State-Machine (Idle/Walk/Hit/Death-Dispatch)
+- Sprite-Tinting für Variants (Modulate-Property)
+- Hit-Flash-Shader bei damage_taken
+- Z-Index-Layering pro Mob-Typ
+
+## Pattern: WaveDef-Resolver (ADR 0026)
+
+`WaveDef` ist eine Content-Resource, die Wellen-Composition data-driven
+beschreibt. Der WaveSpawner liest WaveDefs über den ContentLoader und
+fällt bei Bedarf auf hardcoded Konstanten zurück.
+
+**Zwei Resource-Modi**
+
+```gdscript
+# Modus 1: Curve-Default (genau eine WaveDef trägt das Flag)
+is_default = true
+base_spawn_rate = 0.5         # Welle-1-Rate
+spawn_rate_per_wave = 0.3     # +pro Welle
+max_spawn_rate = 5.0          # Cap
+enemy_pool = [...]            # Default-Pool für alle Wellen ohne Override
+
+# Modus 2: Wave-Override (target_wave_index > 0)
+target_wave_index = 5
+enemy_pool = [&"raptor_grunt", &"raptor_alpha", &"pteranodon"]
+boss_id = &"tyrannosaurus_prime"
+duration_sec = 0.0            # 0 = Default-Dauer nutzen
+```
+
+**Resolver im WaveSpawner**
+
+```gdscript
+get_wave_def_for(idx) → Override-Match → Default → null
+get_active_wave_def() → für current_wave()
+
+# Pro Lookup (Spawn-Rate, Pool, Boss-ID): zuerst Override-WaveDef,
+# dann Default-WaveDef, dann Konstanten-Fallback
+```
+
+**Backward-Kompatibilität**
+
+Alle Konstanten (`BASE_SPAWN_RATE`, `BOSS_WAVE_INTERVAL`, …) bleiben im
+Code als Fallback. Ohne `wave_default.tres` verhält sich der Spawner
+exakt wie vor ADR 0026. Tests, die nur Konstanten kannten, laufen
+weiter durch.
+
+**Modder-Workflow**
+
+Modder können `content/waves/wave_<id>.tres` ergänzen, um eine bestimmte
+Welle zu überschreiben — z.B. „Welle 7 ist immer ein Pteranodon-Schwarm".
+Override eines Core-Files via `override_existing = true` auf der Mod-
+Resource (analog Mutation/Enemy-Override).
+
+**Nicht in v1**
+
+- Pacing-Modes (Rest-Welle, Slow-Welle, Elite-Welle)
+- Pro-Spawn-Gewichte (heute uniform `randi() % pool.size()`)
+- Wave-spezifische Difficulty-Multiplier
+- Wave-Trigger-Conditions (z.B. „spawne nur wenn Mutation X gepickt")
+
 ## Pattern: Lokalisierung ab Tag 1
 
 Jeder User-facing String läuft durch `tr("category.id.field")`. Keine
@@ -932,10 +1690,17 @@ emittiert Warning + sammelt in `overrides_applied()`.
 | 0016 | Run-Scene-Glue | Accepted |
 | 0010 | Modifier-Pipeline (Crit, Bonus, Multiplier, Armor) | Accepted |
 | 0011 | Hit-Detection v1 (distanz-basiert) | Accepted |
+| 0012 | Damage-Number-VFX | Accepted |
 | 0013 | Auto-Spawn-Curves v1 (prozedural) | Accepted |
 | 0017 | Enemy-Movement v1 (Direkt-Walk) | Accepted |
 | 0018 | Visueller Stub + HP-Bar | Accepted |
 | 0019 | Game-Over-Overlay + Run-Restart | Accepted |
+| 0020 | HUD (Run-Timer, Wave-Counter, Mutation-Liste) | Accepted |
+| 0021 | Mutation-Pick-Phase nach jeder Welle | Accepted |
+| 0022 | Rarity-gewichtete Mutation-Picks | Accepted |
+| 0023 | Enemy-Variants + Boss-Resource (Stub) | Accepted |
+| 0024 | Visuelle Enemy-Differenzierung | Accepted |
+| 0025 | Boss-Spawn-Mechanik | Accepted |
 | 0014 | Mutation→Modifier-Bridge | Accepted |
 | 0015 | Player-Mutation-System (Aggregator) | Accepted |
 | 0004 | EventRecorder & Telemetrie-Format | Backlog |
