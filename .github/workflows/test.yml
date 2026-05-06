@@ -1,0 +1,73 @@
+# Headless GUT-Tests auf jedem Push und PR.
+#
+# Lädt eine festgepinnte Godot-4.3-Linux-Headless-Build, führt die
+# tests/unit-Suite via tools/run_tests.sh aus, scheitert bei jedem
+# rotem Test.
+
+name: Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  gut-tests:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    env:
+      GODOT_VERSION: "4.3-stable"
+      GODOT_PLATFORM: "linux.x86_64"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Godot binary
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-headless
+
+      - name: Install Godot ${{ env.GODOT_VERSION }} (headless)
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/godot
+          cd ~/godot
+          ZIP="Godot_v${GODOT_VERSION}_${GODOT_PLATFORM}.zip"
+          URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${ZIP}"
+          curl -fsSL -o godot.zip "$URL"
+          unzip -q godot.zip
+          # Headless-Binary heißt z.B. Godot_v4.3-stable_linux.x86_64
+          BINARY=$(ls Godot_v* | head -1)
+          chmod +x "$BINARY"
+          ln -sf "$PWD/$BINARY" /usr/local/bin/godot4
+          /usr/local/bin/godot4 --version
+
+      - name: Symlink Godot (cached path)
+        if: steps.cache-godot.outputs.cache-hit == 'true'
+        run: |
+          BINARY=$(ls ~/godot/Godot_v* | head -1)
+          chmod +x "$BINARY"
+          sudo ln -sf "$BINARY" /usr/local/bin/godot4
+          godot4 --version
+
+      - name: Import resources (warmup)
+        run: |
+          # Erster Headless-Run lädt und importiert alle Resources einmal,
+          # damit die eigentlichen Tests nicht wegen fehlender .import-Files
+          # in Race-Conditions laufen.
+          godot4 --headless --path . --import || true
+
+      - name: Run GUT tests
+        run: ./tools/run_tests.sh
+
+      - name: Show test result on failure
+        if: failure()
+        run: |
+          echo "::error::GUT-Tests sind rot. Details im obigen Output."
+          exit 1

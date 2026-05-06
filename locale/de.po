@@ -1,0 +1,54 @@
+# DinoRogue — Deutsche Übersetzung
+# Vom localization-coordinator gepflegt.
+#
+# Translation-Key-Schema: <type>.<id>.<field>
+# z.B. mutation.triceratops_horns.tooltip
+
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: de\n"
+
+# --- Mutationen ---
+
+msgid "mutation.triceratops_horns.name"
+msgstr "Triceratops-Hörner"
+
+msgid "mutation.triceratops_horns.tooltip"
+msgstr "Drei Spitzen für drei Probleme. Welche zuerst? (+15% Schaden, +10% Nahkampf-Reichweite)"
+
+msgid "mutation.spinosaur_sail.name"
+msgstr "Spinosaurus-Segel"
+
+msgid "mutation.spinosaur_sail.tooltip"
+msgstr "Solar-Angeber-Mode aktiviert. (+10% Krit-Chance, +50% Krit-Schaden)"
+
+msgid "mutation.ankylosaur_plates.name"
+msgstr "Ankylosaurus-Panzerung"
+
+msgid "mutation.ankylosaur_plates.tooltip"
+msgstr "Schwer wie ein Tresor, weniger einladend. (+20% Rüstung, +15% max HP)"
+
+# --- Enemies ---
+
+msgid "enemy.raptor_grunt.name"
+msgstr "Velociraptor (Schwarm)"
+
+msgid "enemy.raptor_grunt.tooltip"
+msgstr "Schnell, dünn gepanzert, kommt nie alleine."
+
+# --- Dinos ---
+
+msgid "dino.trex.name"
+msgstr "Tyrannosaurus Rex"
+
+msgid "dino.trex.tooltip"
+msgstr "Der Klassiker. Robust, schlagkräftig, unbeeindruckt."
+
+# --- UI-Stubs (Platzhalter, werden mit UI-System gefüllt) ---
+
+msgid "ui.run.start"
+msgstr "Run starten"
+
+msgid "ui.menu.quit"
+msgstr "Beenden"

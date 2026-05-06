@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=3 format=3 uid="uid://dino_enemy_raptor_grunt"]
+
+[ext_resource type="Script" path="res://core/content/enemy_def.gd" id="1_enmdef"]
+[ext_resource type="PackedScene" uid="uid://dino_enemy_mob" path="res://core/enemy/enemy_mob.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_enmdef")
+id = &"raptor_grunt"
+display_name_key = &"enemy.raptor_grunt.name"
+description_key = &"enemy.raptor_grunt.tooltip"
+source_mod_id = &""
+override_existing = false
+max_health = 25.0
+speed = 120.0
+damage = 8.0
+xp_reward = 2
+scene = ExtResource("2_scene")

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MutationDef" load_steps=2 format=3 uid="uid://dino_mut_example_raptor_dash"]
+
+[ext_resource type="Script" path="res://core/content/mutation_def.gd" id="1_mutdef"]
+
+[resource]
+script = ExtResource("1_mutdef")
+id = &"raptor_dash"
+display_name_key = &"mutation.raptor_dash.name"
+description_key = &"mutation.raptor_dash.tooltip"
+source_mod_id = &""
+override_existing = false
+rarity = &"rare"
+stat_modifiers = {
+	&"move_speed_pct": 0.20,
+	&"dash_cooldown_pct": -0.15
+}
+tags = [&"speed", &"mobility"]

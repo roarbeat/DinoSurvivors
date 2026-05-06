@@ -1,0 +1,6 @@
+type,id,rarity,key_stat_1,value_1,key_stat_2,value_2,tags,notes
+mutation,triceratops_horns,common,damage_pct,0.15,melee_range_pct,0.10,"horn;melee;ramming","Erste Mutation. Smoke-Test der Pipeline."
+dino,trex,N/A,max_health,120,base_damage,15,"starter;balanced","Erster Dino-Char. Allrounder-Stats."
+enemy,raptor_grunt,N/A,max_health,25,damage,8,"melee;swarm","Erster Schwarm-Gegner. Schnell, niedrig HP."
+mutation,spinosaur_sail,rare,crit_chance,0.10,crit_damage_pct,0.50,"crit;solar","Crit-Build-Anker."
+mutation,ankylosaur_plates,common,armor_pct,0.20,max_health_pct,0.15,"armor;defense;tank","Tank-Build-Anker."

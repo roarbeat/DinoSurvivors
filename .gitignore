@@ -1,0 +1,62 @@
+# ---- Godot 4 ----
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Godot-specific imported files
+*.import
+
+# Godot-specific exported files
+export.cfg
+export_presets.cfg
+
+# Imported translations (automatically generated from CSV files)
+*.translation
+
+# Mono-specific ignores (only relevant if C# is used)
+.mono/
+data_*/
+mono_crash.*.json
+
+# ---- Builds / Exports ----
+/builds/
+/exports/
+/dist/
+*.pck
+*.zip
+*.exe
+*.dmg
+*.app
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---- OS ----
+.DS_Store
+desktop.ini
+
+# ---- Logs / Temp ----
+*.log
+*.tmp
+logs/
+
+# ---- User-spezifische Saves (lokal, nicht im Repo) ----
+user://
+saves/
+*.save
+
+# ---- Secrets ----
+.env
+.env.local
+*.pem
+*.key
+secrets/
+
+# ---- Mod-Workspace (lokale Mods für Tests) ----
+mods_local/

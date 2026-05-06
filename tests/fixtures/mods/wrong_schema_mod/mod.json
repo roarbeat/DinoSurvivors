@@ -1,0 +1,7 @@
+{
+	"schema_version": 1,
+	"id": "wrong_schema_mod",
+	"name": "Wrong Schema Mod",
+	"author": "test",
+	"game_version_min": "0.0.1"
+}

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MutationDef" load_steps=2 format=3 uid="uid://dino_mut_ankylosaur_plates"]
+
+[ext_resource type="Script" path="res://core/content/mutation_def.gd" id="1_mutdef"]
+
+[resource]
+script = ExtResource("1_mutdef")
+id = &"ankylosaur_plates"
+display_name_key = &"mutation.ankylosaur_plates.name"
+description_key = &"mutation.ankylosaur_plates.tooltip"
+source_mod_id = &""
+override_existing = false
+rarity = &"common"
+stat_modifiers = {
+	&"armor_pct": 0.20,
+	&"max_health_pct": 0.15
+}
+tags = [&"armor", &"defense", &"tank"]

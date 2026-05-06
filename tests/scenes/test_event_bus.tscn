@@ -1,0 +1,31 @@
+[gd_scene load_steps=2 format=3 uid="uid://dino_test_event_bus"]
+
+[ext_resource type="Script" path="res://tests/scenes/test_event_bus.gd" id="1_smoke"]
+
+[node name="TestEventBus" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_smoke")
+
+[node name="Margin" type="MarginContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
+
+[node name="List" type="VBoxContainer" parent="Margin/Scroll"]
+size_flags_horizontal = 3
+
+[node name="Footer" type="HBoxContainer" parent="Margin"]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -32.0
+grow_vertical = 0
+
+[node name="LogLabel" type="Label" parent="Margin/Footer"]
+text = "Smoke-Test bereit. Buttons drücken — EventBus loggt in Output."

@@ -1,0 +1,30 @@
+[gd_scene load_steps=6 format=3 uid="uid://dino_enemy_mob"]
+
+[ext_resource type="Script" path="res://core/enemy/enemy_mob.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://core/components/health_component.gd" id="2_health"]
+[ext_resource type="Script" path="res://core/components/damage_dealer_component.gd" id="3_dealer"]
+[ext_resource type="PackedScene" uid="uid://dino_ui_health_bar" path="res://core/ui/health_bar.tscn" id="4_hpbar"]
+
+[node name="EnemyMob" type="Node2D"]
+script = ExtResource("1_enemy")
+
+[node name="Body" type="ColorRect" parent="."]
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+color = Color(0.82, 0.18, 0.18, 1)
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2_health")
+max_hp = 25.0
+is_player = false
+
+[node name="Dealer" type="Node" parent="."]
+script = ExtResource("3_dealer")
+
+[node name="HealthBar" parent="." instance=ExtResource("4_hpbar")]
+position = Vector2(0, -16)
+bar_width = 20.0
+bar_height = 3.0
+fg_color = Color(0.95, 0.45, 0.25, 1)

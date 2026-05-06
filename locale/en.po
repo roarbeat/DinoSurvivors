@@ -1,0 +1,54 @@
+# DinoRogue — English translation
+# Maintained by localization-coordinator.
+#
+# Translation key schema: <type>.<id>.<field>
+# e.g. mutation.triceratops_horns.tooltip
+
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+# --- Mutations ---
+
+msgid "mutation.triceratops_horns.name"
+msgstr "Triceratops Horns"
+
+msgid "mutation.triceratops_horns.tooltip"
+msgstr "Three points for three problems. Which one first? (+15% damage, +10% melee range)"
+
+msgid "mutation.spinosaur_sail.name"
+msgstr "Spinosaurus Sail"
+
+msgid "mutation.spinosaur_sail.tooltip"
+msgstr "Solar show-off mode engaged. (+10% crit chance, +50% crit damage)"
+
+msgid "mutation.ankylosaur_plates.name"
+msgstr "Ankylosaurus Plates"
+
+msgid "mutation.ankylosaur_plates.tooltip"
+msgstr "Heavy like a vault, less inviting. (+20% armor, +15% max HP)"
+
+# --- Enemies ---
+
+msgid "enemy.raptor_grunt.name"
+msgstr "Velociraptor (Swarm)"
+
+msgid "enemy.raptor_grunt.tooltip"
+msgstr "Fast, lightly armored, never alone."
+
+# --- Dinos ---
+
+msgid "dino.trex.name"
+msgstr "Tyrannosaurus Rex"
+
+msgid "dino.trex.tooltip"
+msgstr "The classic. Sturdy, hard-hitting, unfazed."
+
+# --- UI stubs ---
+
+msgid "ui.run.start"
+msgstr "Start run"
+
+msgid "ui.menu.quit"
+msgstr "Quit"
